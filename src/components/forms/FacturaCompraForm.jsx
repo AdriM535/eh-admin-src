@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import Modal from '../common/Modal.jsx';
 import Field from '../common/Field.jsx';
-import { todayISO, calcLineaCompra } from '../../lib/utils.js';
+import { todayISO, calcLineaCompra, fmtMoney } from '../../lib/utils.js';
 import { CATEGORIAS_GENERALES, METODOS_PAGO } from '../../lib/constants.js';
 
 const emptyLinea = () => ({ producto: '', cantidad: 1, precioUnitario: '', tasaIva: 21, precioUnitarioConIva: 0, importe: 0 });
 
-export default function FacturaCompraForm({ initial, obras, personal, facturaCompraLineas, docs, onSave, onClose }) {
+export default function FacturaCompraForm({ initial, obras, personal, facturaCompraLineas, entregasEfectivo, docs, onSave, onClose }) {
   const initialLineas = initial ? facturaCompraLineas.filter((l) => l.facturaCompraId === initial.id).sort((a, b) => a.orden - b.orden) : [];
   const [f, setF] = useState(
     initial || {
       obraId: '', categoriaGeneral: 'material_general', personalId: '', fecha: todayISO(),
       proveedor: '', numeroFactura: '', metodoPago: 'tarjeta', pagadoPor: '', pagado: true, notas: '',
-      adjuntoPath: '', adjuntoNombre: '',
+      adjuntoPath: '', adjuntoNombre: '', entregaEfectivoId: '',
     }
   );
   const [lineas, setLineas] = useState(initialLineas.length > 0 ? initialLineas : [emptyLinea()]);
@@ -113,6 +113,17 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
           </select>
         </Field>
       </div>
+      {f.metodoPago === 'efectivo' && (
+        <Field label="Justifica una entrega de caja (opcional)">
+          <select value={f.entregaEfectivoId || ''} onChange={(e) => set('entregaEfectivoId', e.target.value)}>
+            <option value="">— No sale de una entrega —</option>
+            {entregasEfectivo.map((en) => {
+              const p = personal.find((x) => x.id === en.personalId);
+              return <option key={en.id} value={en.id}>{p ? p.nombre : 'Sin asignar'} — {fmtMoney(en.importe)} ({en.concepto || 'sin concepto'})</option>;
+            })}
+          </select>
+        </Field>
+      )}
       <Field label="Adjunto (PDF / foto del ticket)">
         <input type="file" accept=".pdf,.jpg,.jpeg,.png" capture="environment" onChange={handleFile} disabled={uploading} />
         <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>En el móvil, esto abre la cámara directamente para fotografiar el ticket/factura.</div>
@@ -126,7 +137,7 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
           className="btn"
           onClick={() => {
             if (!f.obraId && !f.categoriaGeneral) { alert('Selecciona una obra o una categoría de insumo general'); return; }
-            onSave({ ...f, categoriaGeneral: f.obraId ? null : f.categoriaGeneral, lineas });
+            onSave({ ...f, categoriaGeneral: f.obraId ? null : f.categoriaGeneral, entregaEfectivoId: f.metodoPago === 'efectivo' ? f.entregaEfectivoId : null, lineas });
           }}
         >
           Guardar

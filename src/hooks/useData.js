@@ -9,6 +9,7 @@ const emptyData = () => ({
   facturasVenta: [],
   facturasCompra: [],
   facturaCompraLineas: [],
+  entregasEfectivo: [],
   abonos: [],
   nominas: [],
   presupuestos: [],
@@ -24,6 +25,7 @@ const TABLES = {
   facturasVenta: 'facturas_venta',
   facturasCompra: 'facturas_compra',
   facturaCompraLineas: 'factura_compra_lineas',
+  entregasEfectivo: 'entregas_efectivo',
   abonos: 'abonos',
   nominas: 'nominas',
   presupuestos: 'presupuestos',
@@ -210,6 +212,13 @@ export function useData(userId) {
   const saveIncidencia = (i) => saveRow('incidencias', 'incidencias', i);
   const deleteIncidencia = (id) => deleteRow('incidencias', 'incidencias', id);
 
+  // ---------------- CAJA: ENTREGAS DE EFECTIVO A PERSONAL ----------------
+  const saveEntregaEfectivo = (e) => saveRow('entregas_efectivo', 'entregasEfectivo', e);
+  const deleteEntregaEfectivo = (id) => {
+    if (!window.confirm('¿Eliminar esta entrega de efectivo? Las facturas de compra que la justificaban quedarán sin vincular.')) return;
+    return deleteRow('entregas_efectivo', 'entregasEfectivo', id);
+  };
+
   // ---------------- IMPORTAR DESDE EXCEL ----------------
   // Busca por nombre (sin distinguir mayúsculas) en una copia local de la
   // tabla; si no existe lo crea. La copia local (no el estado de React) es
@@ -354,6 +363,8 @@ export function useData(userId) {
       deletePresupuesto,
       saveIncidencia,
       deleteIncidencia,
+      saveEntregaEfectivo,
+      deleteEntregaEfectivo,
       importFacturasVenta,
       importFacturasCompra,
       importNominas,

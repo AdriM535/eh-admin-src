@@ -27,7 +27,9 @@ function cuentasCompra(f) {
     else if (f.categoriaGeneral === 'autonomo') debe = '623 Servicios de profesionales independientes';
     else if (f.categoriaGeneral === 'otro') debe = '629 Otros servicios';
   }
-  const haber = f.pagado ? cuentaCobroPago(f.metodoPago) : '400 Proveedores';
+  // Si sale de una entrega de caja, el efectivo ya salió al hacer la entrega
+  // — aquí solo se liquida el anticipo, no vuelve a salir dinero de caja.
+  const haber = f.entregaEfectivoId ? '460 Anticipos de remuneraciones a personal' : f.pagado ? cuentaCobroPago(f.metodoPago) : '400 Proveedores';
   return { debe, haber };
 }
 
@@ -84,6 +86,15 @@ export function exportToExcel(data, calc) {
       Obra: '', Tercero: p ? p.nombre : '', 'Importe (€)': n.total,
       Estado: n.pagado ? 'Pagado' : 'Pendiente', Método: '',
       'Cuenta (Debe)': debe, 'Cuenta (Haber)': haber, 'En B': '',
+    });
+  });
+  data.entregasEfectivo.forEach((e) => {
+    const p = personalById(e.personalId);
+    movimientos.push({
+      Fecha: e.fecha || '', Tipo: 'Egreso', Concepto: `Entrega de efectivo — ${e.concepto || ''}`.trim(),
+      Obra: '', Tercero: p ? p.nombre : '', 'Importe (€)': e.importe,
+      Estado: 'Pagado', Método: 'efectivo',
+      'Cuenta (Debe)': '460 Anticipos de remuneraciones a personal', 'Cuenta (Haber)': '570 Caja', 'En B': '',
     });
   });
   movimientos.sort((a, b) => (a.Fecha || '').localeCompare(b.Fecha || ''));
@@ -168,6 +179,15 @@ export function exportToExcel(data, calc) {
       };
     });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lineaCompraRows), 'Productos de compra');
+
+  const entregaRows = calc.entregasConStats.map((e) => {
+    const p = personalById(e.personalId);
+    return {
+      Fecha: e.fecha || '', Persona: p ? p.nombre : '', Concepto: e.concepto || '',
+      'Entregado (€)': e.importe, 'Justificado (€)': e.stats.justificado, 'Pendiente (€)': e.stats.pendiente,
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(entregaRows), 'Caja');
 
   const abonoRows = data.abonos.map((a) => {
     const o = obraById(a.obraId);

@@ -84,6 +84,30 @@ export function computeAll(data) {
 
   const obrasActivas = obrasConStats.filter((o) => o.estado === 'activa');
 
+  // ---------------- caja: entregas de efectivo a personal ----------------
+  // El dinero de una entrega sale de caja en el momento de entregarse. Las
+  // facturas de compra en efectivo vinculadas a esa entrega no vuelven a
+  // restar caja (ya se contaron): solo sirven para saber cuánto se justificó.
+  const entregaStats = (entregaId) => {
+    const facturas = data.facturasCompra.filter((f) => f.entregaEfectivoId === entregaId);
+    const justificado = sum(facturas, (f) => f.total);
+    const entrega = data.entregasEfectivo.find((e) => e.id === entregaId);
+    const pendiente = Math.max(0, (entrega ? Number(entrega.importe) : 0) - justificado);
+    return { facturas, justificado, pendiente };
+  };
+  const entregasConStats = data.entregasEfectivo.map((e) => ({ ...e, stats: entregaStats(e.id) }));
+
+  const ingresosEfectivo =
+    sum(data.facturasVenta.filter((f) => f.cobrado && f.metodoCobro === 'efectivo'), (f) => f.total) +
+    sum(data.abonos.filter((a) => a.metodoCobro === 'efectivo'), (a) => a.importe);
+  const gastosEfectivoDirectos = sum(
+    data.facturasCompra.filter((f) => f.pagado && f.metodoPago === 'efectivo' && !f.entregaEfectivoId),
+    (f) => f.total
+  );
+  const totalEntregasEfectivo = sum(data.entregasEfectivo, (e) => e.importe);
+  const cajaSaldo = ingresosEfectivo - gastosEfectivoDirectos - totalEntregasEfectivo;
+  const cajaPendienteJustificar = sum(entregasConStats, (e) => e.stats.pendiente);
+
   return {
     thisMonth, currentYear,
     clienteById, obraById, personalById,
@@ -92,5 +116,6 @@ export function computeAll(data) {
     pendienteCobroTotal, pendientePagoTotal,
     cobrosMesPorMetodo, gastosMesPorMetodo, totalEnB,
     panoramaAnual, anualIngresos, anualGastos, anualMax,
+    entregaStats, entregasConStats, cajaSaldo, cajaPendienteJustificar, ingresosEfectivo, gastosEfectivoDirectos, totalEntregasEfectivo,
   };
 }

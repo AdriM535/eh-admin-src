@@ -106,11 +106,21 @@ instalar nada aparte, basta con abrir la URL en el navegador (y se puede
 - **Incidencias** — daños o sobrecostes por no seguir el protocolo de obra
   (medidas, fotografías…), con el coste estimado y si lo asume la persona
   responsable o la empresa (esto último sí computa como gasto de la obra).
+- **Caja** — dinero entregado en efectivo a un empleado para comprar algo,
+  y qué parte ya está justificada con facturas de compra (y qué falta).
+  Muestra el saldo de caja: cobrado en efectivo − gastos directos en
+  efectivo − entregas a personal.
 - **Panorama** — facturado/gastado del mes, margen, pendientes de cobro y
-  pago, desglose de cobros/gastos por método (efectivo, tarjeta,
-  transferencia, en cuenta) y evolución anual.
+  pago, saldo de caja, desglose de cobros/gastos por método (efectivo,
+  tarjeta, transferencia, en cuenta) y evolución anual.
+- **Importar Excel** — sube un Excel de facturas de venta, de compra o de
+  nóminas; la app detecta la fila de cabeceras, sugiere a qué campo
+  corresponde cada columna y avisa si el importe no se ha mapeado bien
+  antes de dejar importar.
 - **Exportar a Excel** — descarga de todo lo anterior en un único archivo,
-  para seguir teniendo una copia de trabajo fuera de la app si hace falta.
+  incluida una hoja "Ingresos y Egresos" en orden cronológico con las
+  cuentas contables (Debe/Haber, códigos orientativos del plan contable
+  español) que afecta cada movimiento, pensada para pasarla a la gestoría.
 
 ## Sobre el archivo de partida
 

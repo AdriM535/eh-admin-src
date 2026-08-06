@@ -95,6 +95,7 @@ create table if not exists facturas_compra (
   obra_id uuid references obras(id) on delete set null,
   categoria_general text,                         -- gasolina | mantenimiento | material_general | autonomo | otro (solo si no hay obra_id)
   personal_id uuid references personal(id) on delete set null,
+  entrega_efectivo_id uuid,                       -- si el pago sale de una entrega de caja (ver entregas_efectivo), referencia añadida más abajo
   fecha date,
   proveedor text,                                 -- comercio
   numero_factura text,
@@ -110,6 +111,33 @@ create table if not exists facturas_compra (
 );
 create index if not exists facturas_compra_obra_id_idx on facturas_compra(obra_id);
 create index if not exists facturas_compra_personal_id_idx on facturas_compra(personal_id);
+create index if not exists facturas_compra_entrega_efectivo_id_idx on facturas_compra(entrega_efectivo_id);
+
+-- ---------------------------------------------------------------------------
+-- ENTREGAS DE EFECTIVO (caja): dinero que Sindy entrega a un empleado para
+-- que compre algo. Se descuenta de caja en el momento de la entrega. Las
+-- facturas de compra pagadas con ese dinero se vinculan aquí (campo
+-- entrega_efectivo_id en facturas_compra) para saber qué falta justificar.
+-- ---------------------------------------------------------------------------
+create table if not exists entregas_efectivo (
+  id uuid primary key default gen_random_uuid(),
+  personal_id uuid references personal(id) on delete set null,
+  fecha date not null default current_date,
+  importe numeric not null default 0,
+  concepto text,
+  notas text,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists entregas_efectivo_personal_id_idx on entregas_efectivo(personal_id);
+
+do $$
+begin
+  alter table facturas_compra add constraint facturas_compra_entrega_efectivo_id_fkey
+    foreign key (entrega_efectivo_id) references entregas_efectivo(id) on delete set null;
+exception when duplicate_object then
+  null;
+end $$;
 
 create table if not exists factura_compra_lineas (
   id uuid primary key default gen_random_uuid(),
@@ -229,7 +257,7 @@ declare
 begin
   for t in select unnest(array[
     'clientes','obras','personal','facturas_venta','facturas_compra',
-    'factura_compra_lineas','abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
+    'factura_compra_lineas','entregas_efectivo','abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
   ])
   loop
     execute format('alter table %I enable row level security;', t);
@@ -278,7 +306,7 @@ declare
 begin
   for t in select unnest(array[
     'clientes','obras','personal','facturas_venta','facturas_compra',
-    'factura_compra_lineas','abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
+    'factura_compra_lineas','entregas_efectivo','abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
   ])
   loop
     begin

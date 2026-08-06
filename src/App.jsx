@@ -19,6 +19,7 @@ import Personal from './components/tabs/Personal.jsx';
 import Nominas from './components/tabs/Nominas.jsx';
 import Incidencias from './components/tabs/Incidencias.jsx';
 import Importar from './components/tabs/Importar.jsx';
+import Caja from './components/tabs/Caja.jsx';
 
 import ObraForm from './components/forms/ObraForm.jsx';
 import ClienteForm from './components/forms/ClienteForm.jsx';
@@ -29,6 +30,7 @@ import PresupuestoForm from './components/forms/PresupuestoForm.jsx';
 import PersonalForm from './components/forms/PersonalForm.jsx';
 import NominaForm from './components/forms/NominaForm.jsx';
 import IncidenciaForm from './components/forms/IncidenciaForm.jsx';
+import EntregaEfectivoForm from './components/forms/EntregaEfectivoForm.jsx';
 
 export default function App() {
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
@@ -76,6 +78,7 @@ function Operacion({ user, onSignOut }) {
         {tab === 'nominas' && <Nominas {...tabProps} />}
         {tab === 'incidencias' && <Incidencias {...tabProps} />}
         {tab === 'importar' && <Importar {...tabProps} />}
+        {tab === 'caja' && <Caja {...tabProps} />}
       </main>
 
       {modal?.type === 'obra' && <ObraForm initial={modal.initial} clientes={data.clientes} onSave={wrap(actions.saveObra)} onClose={() => setModal(null)} />}
@@ -89,6 +92,7 @@ function Operacion({ user, onSignOut }) {
           obras={data.obras}
           personal={data.personal}
           facturaCompraLineas={data.facturaCompraLineas}
+          entregasEfectivo={data.entregasEfectivo}
           docs={docs}
           onSave={wrap(actions.saveFacturaCompra)}
           onClose={() => setModal(null)}
@@ -101,6 +105,7 @@ function Operacion({ user, onSignOut }) {
       {modal?.type === 'personal' && <PersonalForm initial={modal.initial} onSave={wrap(actions.savePersonal)} onClose={() => setModal(null)} />}
       {modal?.type === 'nomina' && <NominaForm initial={modal.initial} personal={data.personal} onSave={wrap(actions.saveNomina)} onClose={() => setModal(null)} />}
       {modal?.type === 'incidencia' && <IncidenciaForm initial={modal.initial} obras={data.obras} personal={data.personal} onSave={wrap(actions.saveIncidencia)} onClose={() => setModal(null)} />}
+      {modal?.type === 'entregaEfectivo' && <EntregaEfectivoForm initial={modal.initial} personal={data.personal} onSave={wrap(actions.saveEntregaEfectivo)} onClose={() => setModal(null)} />}
     </div>
   );
 }

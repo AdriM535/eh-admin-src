@@ -5,6 +5,7 @@ export default function Dashboard({ calc, setTab }) {
     ingresosMes, gastosMes, margenMes, pendienteCobroTotal, pendientePagoTotal,
     cobrosMesPorMetodo, gastosMesPorMetodo, totalEnB, obrasActivas,
     panoramaAnual, anualIngresos, anualGastos, anualMax, currentYear,
+    cajaSaldo, cajaPendienteJustificar,
   } = calc;
 
   return (
@@ -25,6 +26,10 @@ export default function Dashboard({ calc, setTab }) {
       <div className="ledger" style={{ marginTop: -18 }}>
         <div className={'cell' + (pendientePagoTotal > 0 ? ' warn' : '')}><div className="lbl">Pendiente de pago</div><div className="val">{fmtMoney(pendientePagoTotal)}</div></div>
         <div className="cell"><div className="lbl">Obras activas</div><div className="val">{obrasActivas.length}</div></div>
+        <div className={'cell' + (cajaSaldo < 0 ? ' warn' : ' ok')} style={{ cursor: 'pointer' }} onClick={() => setTab && setTab('caja')}><div className="lbl">Saldo de caja</div><div className="val">{fmtMoney(cajaSaldo)}</div></div>
+        <div className={'cell' + (cajaPendienteJustificar > 0 ? ' warn' : '')} style={{ cursor: 'pointer' }} onClick={() => setTab && setTab('caja')}><div className="lbl">Pendiente de justificar</div><div className="val">{fmtMoney(cajaPendienteJustificar)}</div></div>
+      </div>
+      <div className="ledger" style={{ marginTop: -18, gridTemplateColumns: 'repeat(2,1fr)' }}>
         <div className="cell"><div className="lbl">Cobrado en B (total)</div><div className="val">{fmtMoney(totalEnB)}</div></div>
         <div className="cell"><div className="lbl">Año</div><div className="val">{currentYear}</div></div>
       </div>

@@ -5,11 +5,12 @@ const NAV_ITEMS = [
   { id: 'ventas', label: 'Facturas de venta', n: '03' },
   { id: 'compras', label: 'Facturas de compra', n: '04' },
   { id: 'abonos', label: 'Abonos y anticipos', n: '05' },
-  { id: 'presupuestos', label: 'Presupuestos', n: '06' },
-  { id: 'personal', label: 'Personal', n: '07' },
-  { id: 'nominas', label: 'Nóminas', n: '08' },
-  { id: 'incidencias', label: 'Incidencias', n: '09' },
-  { id: 'importar', label: 'Importar Excel', n: '10' },
+  { id: 'caja', label: 'Caja', n: '06' },
+  { id: 'presupuestos', label: 'Presupuestos', n: '07' },
+  { id: 'personal', label: 'Personal', n: '08' },
+  { id: 'nominas', label: 'Nóminas', n: '09' },
+  { id: 'incidencias', label: 'Incidencias', n: '10' },
+  { id: 'importar', label: 'Importar Excel', n: '11' },
 ];
 
 export default function Sidebar({ tab, setTab, data, onExport, userEmail, onSignOut }) {
