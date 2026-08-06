@@ -85,7 +85,7 @@ export default function FacturaVentaForm({ initial, obras, clientes, docs, onSav
         <label htmlFor="enb-venta">Cobro en B (no declarado — solo control interno)</label>
       </div>
       <Field label="Adjunto (PDF / foto)">
-        <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFile} disabled={uploading} />
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png" capture="environment" onChange={handleFile} disabled={uploading} />
         {f.adjuntoNombre && <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 4 }}>Archivo: {f.adjuntoNombre}</div>}
         {uploading && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>Subiendo…</div>}
       </Field>

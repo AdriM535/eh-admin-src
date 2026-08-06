@@ -94,6 +94,7 @@ export function parseValue(raw, type) {
 export const IMPORT_SPECS = {
   ventas: {
     label: 'Facturas de venta',
+    montoKey: 'total', // campo que debe traer el importe real — se avisa si queda vacío o en 0
     fields: [
       { key: 'clienteNombre', label: 'Cliente', candidates: ['nombre destinatario', 'cliente', 'destinatario'] },
       { key: 'obraNombre', label: 'Obra', candidates: ['proyecto / obra', 'obra', 'proyecto'] },
@@ -111,6 +112,7 @@ export const IMPORT_SPECS = {
     ],
   },
   compras: {
+    montoKey: 'importe',
     label: 'Facturas de compra',
     // Cada fila del Excel es UN PRODUCTO de una factura, no la factura entera
     // (igual que la hoja "Gastos" original). Varias filas con el mismo nº de
@@ -135,6 +137,7 @@ export const IMPORT_SPECS = {
   },
   nominas: {
     label: 'Nóminas',
+    montoKey: 'liquidado',
     fields: [
       { key: 'trabajador', label: 'Trabajador/a', candidates: ['trabajador/a', 'trabajador', 'nombre'] },
       { key: 'periodoInicio', label: 'Periodo inicio', type: 'date', candidates: ['inicio'] },

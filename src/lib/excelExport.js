@@ -2,9 +2,92 @@ import * as XLSX from 'xlsx';
 import { todayISO, trimestreDe } from './utils.js';
 import { CATEGORIAS_GENERALES } from './constants.js';
 
+// Cuentas contables por defecto (Plan General Contable español, orientativas).
+// Sirven para que la gestoría/programa de contabilidad sepa qué cuenta se ve
+// afectada en cada movimiento — revísalas con tu asesor antes de usarlas
+// como definitivas, cada gestoría puede preferir una codificación distinta.
+const cuentaCobroPago = (metodo) => (metodo === 'efectivo' ? '570 Caja' : '572 Bancos');
+
+function cuentasVenta(f) {
+  const haber = '700 Prestación de servicios';
+  const debe = f.cobrado ? cuentaCobroPago(f.metodoCobro) : '430 Clientes';
+  return { debe, haber };
+}
+
+function cuentasAbono(a) {
+  const debe = cuentaCobroPago(a.metodoCobro);
+  const haber = a.esAnticipo ? '438 Anticipos de clientes' : '430 Clientes';
+  return { debe, haber };
+}
+
+function cuentasCompra(f) {
+  let debe = '600 Compras de materiales';
+  if (!f.obraId) {
+    if (f.categoriaGeneral === 'gasolina' || f.categoriaGeneral === 'mantenimiento') debe = '628 Suministros y servicios exteriores';
+    else if (f.categoriaGeneral === 'autonomo') debe = '623 Servicios de profesionales independientes';
+    else if (f.categoriaGeneral === 'otro') debe = '629 Otros servicios';
+  }
+  const haber = f.pagado ? cuentaCobroPago(f.metodoPago) : '400 Proveedores';
+  return { debe, haber };
+}
+
+function cuentasNomina(n) {
+  const debe = n.tipo === 'bono_extra' ? '640 Sueldos y salarios (bono/extra)' : '640 Sueldos y salarios';
+  const haber = n.pagado ? '572 Bancos' : '465 Remuneraciones pendientes de pago';
+  return { debe, haber };
+}
+
 export function exportToExcel(data, calc) {
   const { clienteById, obraById, personalById } = calc;
   const wb = XLSX.utils.book_new();
+
+  // ------------- Ingresos y Egresos (libro diario simplificado) -------------
+  const movimientos = [];
+  data.facturasVenta.forEach((f) => {
+    const o = obraById(f.obraId);
+    const c = clienteById(f.clienteId);
+    const { debe, haber } = cuentasVenta(f);
+    movimientos.push({
+      Fecha: f.fechaExpedicion || '', Tipo: 'Ingreso', Concepto: `Factura venta ${f.serie || ''}${f.numero || ''}`.trim(),
+      Obra: o ? o.nombre : '', Tercero: c ? c.nombre : '', 'Importe (€)': f.total,
+      Estado: f.cobrado ? 'Cobrado' : 'Pendiente', Método: f.metodoCobro || '',
+      'Cuenta (Debe)': debe, 'Cuenta (Haber)': haber, 'En B': f.enB ? 'Sí' : 'No',
+    });
+  });
+  data.abonos.forEach((a) => {
+    const o = obraById(a.obraId);
+    const c = clienteById(a.clienteId);
+    const { debe, haber } = cuentasAbono(a);
+    movimientos.push({
+      Fecha: a.fecha || '', Tipo: 'Ingreso', Concepto: a.concepto || (a.esAnticipo ? 'Anticipo' : 'Abono'),
+      Obra: o ? o.nombre : '', Tercero: c ? c.nombre : '', 'Importe (€)': a.importe,
+      Estado: 'Cobrado', Método: a.metodoCobro || '',
+      'Cuenta (Debe)': debe, 'Cuenta (Haber)': haber, 'En B': a.enB ? 'Sí' : 'No',
+    });
+  });
+  data.facturasCompra.forEach((f) => {
+    const o = obraById(f.obraId);
+    const { debe, haber } = cuentasCompra(f);
+    movimientos.push({
+      Fecha: f.fecha || '', Tipo: 'Egreso', Concepto: `Factura compra ${f.numeroFactura || ''} — ${f.proveedor || ''}`.trim(),
+      Obra: o ? o.nombre : (CATEGORIAS_GENERALES.find((c) => c.id === f.categoriaGeneral)?.label || ''),
+      Tercero: f.proveedor || '', 'Importe (€)': f.total,
+      Estado: f.pagado ? 'Pagado' : 'Pendiente', Método: f.metodoPago || '',
+      'Cuenta (Debe)': debe, 'Cuenta (Haber)': haber, 'En B': '',
+    });
+  });
+  data.nominas.forEach((n) => {
+    const p = personalById(n.personalId);
+    const { debe, haber } = cuentasNomina(n);
+    movimientos.push({
+      Fecha: n.fechaPago || n.periodoFin || '', Tipo: 'Egreso', Concepto: n.tipo === 'bono_extra' ? `Bono/extra — ${n.notas || ''}`.trim() : 'Nómina',
+      Obra: '', Tercero: p ? p.nombre : '', 'Importe (€)': n.total,
+      Estado: n.pagado ? 'Pagado' : 'Pendiente', Método: '',
+      'Cuenta (Debe)': debe, 'Cuenta (Haber)': haber, 'En B': '',
+    });
+  });
+  movimientos.sort((a, b) => (a.Fecha || '').localeCompare(b.Fecha || ''));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(movimientos), 'Ingresos y Egresos');
 
   const obraRows = data.obras.map((o) => {
     const s = calc.obraStats(o.id);

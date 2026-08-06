@@ -24,6 +24,11 @@ function abrirImpresion(p, lineas, cliente, obra) {
       .total{text-align:right;font-size:18px;font-weight:700;margin-top:14px;}
       .meta{margin:18px 0;font-size:13px;line-height:1.7;}
       .notas{margin-top:24px;font-size:12.5px;color:#6B7280;white-space:pre-wrap;}
+      .legal{margin-top:28px;padding:12px 14px;border:1px solid #C08A3E;background:#FBF3E4;font-size:11.5px;line-height:1.6;color:#5A4522;}
+      .firmas{display:flex;gap:40px;margin-top:56px;}
+      .firma{flex:1;text-align:center;}
+      .firma .linea{border-top:1px solid #32363B;margin-bottom:6px;padding-top:46px;}
+      .firma .label{font-size:11.5px;color:#6B7280;}
     </style></head>
     <body>
       <h1>Estructuras Humanizadoras</h1>
@@ -39,6 +44,19 @@ function abrirImpresion(p, lineas, cliente, obra) {
       </table>
       <div class="total">Total: ${fmtMoney(p.total)}</div>
       ${p.notas ? `<div class="notas">${escapeHtml(p.notas)}</div>` : ''}
+      <div class="legal">
+        <b>Aviso legal:</b> Este documento es un <b>PRESUPUESTO</b> y tiene carácter meramente
+        informativo. No constituye un compromiso ni una obligación contractual para ninguna
+        de las partes. Únicamente adquirirá validez como encargo de obra cuando sea
+        <b>firmado por el cliente y por Estructuras Humanizadoras</b>, momento en el que pasará
+        a considerarse aceptado. Los precios y plazos indicados son válidos durante ${escapeHtml(p.validezDias || 30)}
+        días naturales desde la fecha de emisión y podrán variar si se modifican las
+        condiciones de la obra.
+      </div>
+      <div class="firmas">
+        <div class="firma"><div class="linea"></div><div class="label">Firma del cliente — fecha</div></div>
+        <div class="firma"><div class="linea"></div><div class="label">Firma de Estructuras Humanizadoras — fecha</div></div>
+      </div>
     </body></html>
   `);
   win.document.close();

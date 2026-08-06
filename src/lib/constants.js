@@ -31,6 +31,11 @@ export const TIPOS_PERSONAL = [
   { id: 'autonomo', label: 'Autónomo' },
 ];
 
+export const TIPOS_NOMINA = [
+  { id: 'periodica', label: 'Nómina periódica' },
+  { id: 'bono_extra', label: 'Bono / pago extra (fuera de nómina)' },
+];
+
 export const ESTADOS_PRESUPUESTO = [
   { id: 'borrador', label: 'Borrador' },
   { id: 'enviado', label: 'Enviado' },

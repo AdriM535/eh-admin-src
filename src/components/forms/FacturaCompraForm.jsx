@@ -114,7 +114,8 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
         </Field>
       </div>
       <Field label="Adjunto (PDF / foto del ticket)">
-        <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFile} disabled={uploading} />
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png" capture="environment" onChange={handleFile} disabled={uploading} />
+        <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>En el móvil, esto abre la cámara directamente para fotografiar el ticket/factura.</div>
         {f.adjuntoNombre && <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 4 }}>Archivo: {f.adjuntoNombre}</div>}
         {uploading && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>Subiendo…</div>}
       </Field>

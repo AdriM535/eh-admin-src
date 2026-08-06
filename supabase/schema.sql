@@ -151,6 +151,7 @@ create index if not exists abonos_cliente_id_idx on abonos(cliente_id);
 create table if not exists nominas (
   id uuid primary key default gen_random_uuid(),
   personal_id uuid not null references personal(id) on delete cascade,
+  tipo text not null default 'periodica',        -- periodica | bono_extra (pago fuera de nómina normal)
   periodo_inicio date,
   periodo_fin date,
   liquidado numeric not null default 0,

@@ -88,6 +88,12 @@ export default function Importar({ actions }) {
   const comprasGrupos = useMemo(() => (tipo === 'compras' ? groupFacturasCompra(mappedRows) : null), [tipo, mappedRows]);
   const importPayload = tipo === 'compras' ? comprasGrupos : mappedRows;
 
+  // Aviso si la columna de importe no está mapeada o todas las filas dan 0 —
+  // suele pasar cuando la fila de cabeceras elegida no era la correcta (hojas
+  // con cabeceras repartidas en varias filas, como la de "Ingresos").
+  const montoSinMapear = spec?.montoKey != null && (mapping[spec.montoKey] == null || mapping[spec.montoKey] < 0);
+  const montoTodoCero = spec?.montoKey != null && mappedRows.length > 0 && mappedRows.every((r) => !r[spec.montoKey]);
+
   const runImport = async () => {
     setBusy(true);
     setProgress({ done: 0, total: importPayload.length });
@@ -184,6 +190,15 @@ export default function Importar({ actions }) {
             </div>
           </div>
 
+          {(montoSinMapear || montoTodoCero) && (
+            <div className="alertrow crit" style={{ marginBottom: 16 }}>
+              <span className="tag">Revisa esto</span>
+              {montoSinMapear
+                ? 'No has indicado qué columna trae el importe — sin eso, todas las filas se importarán con importe 0.'
+                : 'La columna de importe que elegiste está vacía o da 0 en todas las filas. Es muy probable que la fila de cabeceras no sea la correcta (algunas hojas, como "Ingresos", tienen las cabeceras repartidas en dos filas) — vuelve al paso anterior y prueba con otra fila.'}
+            </div>
+          )}
+
           <div className="section-title">
             Vista previa <span className="count">{dataRows.length} fila(s) detectadas</span>
             {tipo === 'compras' && <span className="count">{comprasGrupos.length} factura(s) agrupadas</span>}
@@ -201,6 +216,7 @@ export default function Importar({ actions }) {
 
           <div className="modal-actions" style={{ justifyContent: 'flex-start' }}>
             <button className="btn ghost" onClick={reset}>Cancelar</button>
+            <button className="btn ghost" onClick={() => setHeaderRowIndex(null)}>← Elegir otra fila de cabecera</button>
             <button className="btn" disabled={busy || importPayload.length === 0} onClick={runImport}>
               {busy
                 ? `Importando ${progress ? `${progress.done}/${progress.total}` : '…'}`
