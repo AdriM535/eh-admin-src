@@ -1,0 +1,147 @@
+import * as XLSX from 'xlsx';
+
+export function readWorkbook(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+        const sheets = {};
+        wb.SheetNames.forEach((name) => {
+          sheets[name] = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '', raw: true });
+        });
+        resolve({ sheetNames: wb.SheetNames, sheets });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+const norm = (s) =>
+  String(s ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim();
+
+export function guessColumn(headerRow, candidates) {
+  const normalized = headerRow.map(norm);
+  for (const cand of candidates) {
+    const c = norm(cand);
+    const exact = normalized.findIndex((h) => h === c);
+    if (exact !== -1) return exact;
+  }
+  for (const cand of candidates) {
+    const c = norm(cand);
+    const partial = normalized.findIndex((h) => h && (h.includes(c) || c.includes(h)));
+    if (partial !== -1) return partial;
+  }
+  return -1;
+}
+
+export function parseNumber(v) {
+  if (v === '' || v == null) return null;
+  if (typeof v === 'number') return v;
+  let s = String(v).trim().replace(/[€\s]/g, '');
+  if (!s) return null;
+  if (/,\d{1,2}$/.test(s) && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/,\d{1,2}$/.test(s)) s = s.replace(',', '.');
+  else s = s.replace(/,/g, '');
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+const TRUTHY = new Set(['si', 'sí', 's', 'x', 'true', '1', 'yes', 'cobrado', 'pagado', 'cobrada', 'pagada']);
+export function parseBool(v) {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v !== 0;
+  return TRUTHY.has(norm(v));
+}
+
+export function parseDate(v) {
+  if (!v) return '';
+  if (v instanceof Date && !isNaN(v)) {
+    const y = v.getFullYear();
+    const m = String(v.getMonth() + 1).padStart(2, '0');
+    const d = String(v.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return '';
+}
+
+export function isRowEmpty(row) {
+  return !row || row.every((c) => c === '' || c == null);
+}
+
+export function parseValue(raw, type) {
+  if (type === 'number') return parseNumber(raw);
+  if (type === 'date') return parseDate(raw);
+  if (type === 'bool') return parseBool(raw);
+  return raw == null ? '' : String(raw).trim();
+}
+
+// Especificaciones de los tres tipos de importación que ofrece la app.
+// `candidates` son los nombres de columna habituales que la app intenta
+// adivinar automáticamente contra las cabeceras del Excel subido.
+export const IMPORT_SPECS = {
+  ventas: {
+    label: 'Facturas de venta',
+    fields: [
+      { key: 'clienteNombre', label: 'Cliente', candidates: ['nombre destinatario', 'cliente', 'destinatario'] },
+      { key: 'obraNombre', label: 'Obra', candidates: ['proyecto / obra', 'obra', 'proyecto'] },
+      { key: 'serie', label: 'Serie', candidates: ['serie'] },
+      { key: 'numero', label: 'Número', candidates: ['numero', 'número', 'nº'] },
+      { key: 'fechaExpedicion', label: 'Fecha expedición', type: 'date', candidates: ['fecha expedicion', 'fecha'] },
+      { key: 'fechaCobro', label: 'Fecha de cobro', type: 'date', candidates: ['fecha operacion cobro', 'fecha cobro'] },
+      { key: 'baseImponible', label: 'Base imponible', type: 'number', candidates: ['base imponible'] },
+      { key: 'tipoIva', label: 'IVA %', type: 'number', candidates: ['tipo de iva', 'tipo iva', 'iva'] },
+      { key: 'total', label: 'Total', type: 'number', candidates: ['total factura', 'total'] },
+      { key: 'cobrado', label: 'Cobrada', type: 'bool', candidates: ['cobro', 'cobrado', 'cobrada'] },
+      { key: 'metodoCobro', label: 'Método de cobro', candidates: ['cobro en cuenta', 'metodo de cobro', 'metalico'] },
+      { key: 'enB', label: 'Cobro en B', type: 'bool', candidates: ['en b', 'b'] },
+      { key: 'notas', label: 'Notas', candidates: ['notas', 'observaciones'] },
+    ],
+  },
+  compras: {
+    label: 'Facturas de compra',
+    fields: [
+      { key: 'obraNombre', label: 'Obra', candidates: ['proyecto / obra', 'obra', 'proyecto'] },
+      { key: 'proveedor', label: 'Proveedor / comercio', candidates: ['comercio', 'proveedor'] },
+      { key: 'numeroFactura', label: 'Nº de factura', candidates: ['identificacion factura del expedidor', 'numero de factura', 'nº factura'] },
+      { key: 'fecha', label: 'Fecha', type: 'date', candidates: ['fecha expedicion', 'fecha'] },
+      { key: 'concepto', label: 'Concepto / producto', candidates: ['producto', 'concepto'] },
+      { key: 'baseImponible', label: 'Base imponible', type: 'number', candidates: ['base imponible', 'precio unid'] },
+      { key: 'tipoIva', label: 'IVA %', type: 'number', candidates: ['tasa iva', 'iva %', 'iva'] },
+      { key: 'total', label: 'Total', type: 'number', candidates: ['importe total', 'total'] },
+      { key: 'metodoPago', label: 'Método de pago', candidates: ['metodo de pago', 'pago'] },
+      { key: 'pagadoPor', label: 'Pagado por', candidates: ['pago', 'pagado por'] },
+      { key: 'pagado', label: 'Pagada', type: 'bool', candidates: ['pagado', 'pagada'] },
+      { key: 'notas', label: 'Notas', candidates: ['notas', 'observaciones'] },
+    ],
+  },
+  nominas: {
+    label: 'Nóminas',
+    fields: [
+      { key: 'trabajador', label: 'Trabajador/a', candidates: ['trabajador/a', 'trabajador', 'nombre'] },
+      { key: 'periodoInicio', label: 'Periodo inicio', type: 'date', candidates: ['inicio'] },
+      { key: 'periodoFin', label: 'Periodo fin', type: 'date', candidates: ['fin'] },
+      { key: 'liquidado', label: 'Liquidado a percibir', type: 'number', candidates: ['liquidado a percibir', 'liquidado'] },
+      { key: 'cotizacionSs', label: 'Cotización SS', type: 'number', candidates: ['cotizacion seguridad social', 'cotizacion ss'] },
+      { key: 'adicionales', label: 'Adicionales', type: 'number', candidates: ['adicional (b)', 'adicionales'] },
+      { key: 'deducciones', label: 'Deducciones', type: 'number', candidates: ['deduccion errores', 'deducciones'] },
+      { key: 'horasExtra', label: 'Horas extra', type: 'number', candidates: ['horas extras', 'horas extra'] },
+      { key: 'total', label: 'Total', type: 'number', candidates: ['nomina total', 'total'] },
+      { key: 'pagado', label: 'Pagada', type: 'bool', candidates: ['pagado', 'pagada'] },
+      { key: 'fechaPago', label: 'Fecha de pago', type: 'date', candidates: ['fecha de pago'] },
+      { key: 'notas', label: 'Notas', candidates: ['notas'] },
+    ],
+  },
+};
