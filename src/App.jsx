@@ -84,7 +84,15 @@ function Operacion({ user, onSignOut }) {
         <FacturaVentaForm initial={modal.initial} obras={data.obras} clientes={data.clientes} docs={docs} onSave={wrap(actions.saveFacturaVenta)} onClose={() => setModal(null)} />
       )}
       {modal?.type === 'facturaCompra' && (
-        <FacturaCompraForm initial={modal.initial} obras={data.obras} personal={data.personal} docs={docs} onSave={wrap(actions.saveFacturaCompra)} onClose={() => setModal(null)} />
+        <FacturaCompraForm
+          initial={modal.initial}
+          obras={data.obras}
+          personal={data.personal}
+          facturaCompraLineas={data.facturaCompraLineas}
+          docs={docs}
+          onSave={wrap(actions.saveFacturaCompra)}
+          onClose={() => setModal(null)}
+        />
       )}
       {modal?.type === 'abono' && <AbonoForm initial={modal.initial} obras={data.obras} clientes={data.clientes} onSave={wrap(actions.saveAbono)} onClose={() => setModal(null)} />}
       {modal?.type === 'presupuesto' && (

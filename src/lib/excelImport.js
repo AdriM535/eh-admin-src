@@ -112,19 +112,25 @@ export const IMPORT_SPECS = {
   },
   compras: {
     label: 'Facturas de compra',
+    // Cada fila del Excel es UN PRODUCTO de una factura, no la factura entera
+    // (igual que la hoja "Gastos" original). Varias filas con el mismo nº de
+    // factura + fecha + proveedor se agrupan en una sola factura de compra
+    // con varias líneas — ver groupFacturasCompra() más abajo.
     fields: [
-      { key: 'obraNombre', label: 'Obra', candidates: ['proyecto / obra', 'obra', 'proyecto'] },
-      { key: 'proveedor', label: 'Proveedor / comercio', candidates: ['comercio', 'proveedor'] },
-      { key: 'numeroFactura', label: 'Nº de factura', candidates: ['identificacion factura del expedidor', 'numero de factura', 'nº factura'] },
       { key: 'fecha', label: 'Fecha', type: 'date', candidates: ['fecha expedicion', 'fecha'] },
-      { key: 'concepto', label: 'Concepto / producto', candidates: ['producto', 'concepto'] },
-      { key: 'baseImponible', label: 'Base imponible', type: 'number', candidates: ['base imponible', 'precio unid'] },
-      { key: 'tipoIva', label: 'IVA %', type: 'number', candidates: ['tasa iva', 'iva %', 'iva'] },
-      { key: 'total', label: 'Total', type: 'number', candidates: ['importe total', 'total'] },
+      { key: 'obraNombre', label: 'Obra', candidates: ['proyecto / obra', 'obra', 'proyecto'] },
+      { key: 'categoriaGeneral', label: 'Categoría (si no es de una obra)', candidates: ['categoria', 'insumo general', 'tipo'] },
+      { key: 'numeroFactura', label: 'Nº de factura', candidates: ['identificacion factura del expedidor', 'numero de factura', 'nº factura'] },
+      { key: 'proveedor', label: 'Comercio / proveedor', candidates: ['comercio', 'proveedor'] },
+      { key: 'producto', label: 'Producto', candidates: ['producto'] },
+      { key: 'cantidad', label: 'Cantidad', type: 'number', candidates: ['cantidad'] },
+      { key: 'precioUnitario', label: 'Precio unidad', type: 'number', candidates: ['precio unid.', 'precio unidad', 'precio unid'] },
+      { key: 'tasaIva', label: 'Tasa IVA %', type: 'number', candidates: ['tasa iva', 'iva %', 'iva'] },
+      { key: 'precioUnitarioConIva', label: 'Precio unidad con IVA', type: 'number', candidates: ['precio unid. con iva', 'precio unidad con iva'] },
+      { key: 'importe', label: 'Importe total', type: 'number', candidates: ['importe total', 'importe'] },
       { key: 'metodoPago', label: 'Método de pago', candidates: ['metodo de pago', 'pago'] },
       { key: 'pagadoPor', label: 'Pagado por', candidates: ['pago', 'pagado por'] },
       { key: 'pagado', label: 'Pagada', type: 'bool', candidates: ['pagado', 'pagada'] },
-      { key: 'notas', label: 'Notas', candidates: ['notas', 'observaciones'] },
     ],
   },
   nominas: {
@@ -145,3 +151,30 @@ export const IMPORT_SPECS = {
     ],
   },
 };
+
+// Agrupa filas de producto (una por línea del Excel de compras) en facturas
+// con varias líneas, usando nº de factura + fecha + proveedor como clave.
+export function groupFacturasCompra(rows) {
+  const groups = [];
+  const index = new Map();
+  rows.forEach((r) => {
+    const key = [r.numeroFactura || '', r.fecha || '', norm(r.proveedor || '')].join('|');
+    let g = index.get(key);
+    if (!g) {
+      g = {
+        fecha: r.fecha, obraNombre: r.obraNombre, categoriaGeneral: r.categoriaGeneral,
+        numeroFactura: r.numeroFactura, proveedor: r.proveedor, metodoPago: r.metodoPago,
+        pagadoPor: r.pagadoPor, pagado: r.pagado, lineas: [],
+      };
+      index.set(key, g);
+      groups.push(g);
+    }
+    if (r.producto) {
+      g.lineas.push({
+        producto: r.producto, cantidad: r.cantidad, precioUnitario: r.precioUnitario,
+        tasaIva: r.tasaIva, precioUnitarioConIva: r.precioUnitarioConIva, importe: r.importe,
+      });
+    }
+  });
+  return groups;
+}

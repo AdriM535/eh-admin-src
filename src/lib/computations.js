@@ -1,4 +1,4 @@
-import { todayISO, daysUntil } from './utils.js';
+import { todayISO } from './utils.js';
 import { MES_CORTO } from './constants.js';
 
 // Todos los valores derivados de `data` que se reutilizan entre pestañas.
@@ -70,34 +70,6 @@ export function computeAll(data) {
 
   const totalEnB = sum(data.facturasVenta.filter((f) => f.enB), (f) => f.total) + sum(data.abonos.filter((a) => a.enB), (a) => a.importe);
 
-  // ---------------- alertas ----------------
-  const alerts = [];
-  data.facturasVenta.forEach((f) => {
-    if (f.cobrado) return;
-    const d = daysUntil(f.fechaExpedicion);
-    if (d !== null && d <= -30) {
-      const c = clienteById(f.clienteId);
-      alerts.push({ crit: d <= -60, tag: 'COBRO', txt: `Factura ${f.serie || ''}${f.numero || '(sin número)'} de ${c ? c.nombre : 'cliente sin asignar'} sin cobrar desde hace ${Math.abs(d)} días` });
-    }
-  });
-  data.facturasCompra.forEach((f) => {
-    if (f.pagado) return;
-    alerts.push({ crit: false, tag: 'PAGO', txt: `Factura de ${f.proveedor || 'proveedor'} (${f.numeroFactura || 'sin número'}) pendiente de pago` });
-  });
-  data.presupuestos.forEach((p) => {
-    if (p.estado !== 'enviado') return;
-    const d = daysUntil(p.fecha);
-    if (d !== null && d <= -15) {
-      const c = clienteById(p.clienteId);
-      alerts.push({ crit: false, tag: 'PRESUPUESTO', txt: `Presupuesto ${p.numero || ''} a ${c ? c.nombre : 'cliente'} enviado hace ${Math.abs(d)} días sin respuesta` });
-    }
-  });
-  data.incidencias.forEach((i) => {
-    if (i.estado === 'resuelto') return;
-    const o = obraById(i.obraId);
-    alerts.push({ crit: Number(i.coste) > 300, tag: 'INCIDENCIA', txt: `Incidencia pendiente${o ? ' en ' + o.nombre : ''}: ${i.descripcion.slice(0, 60)}` });
-  });
-
   // ---------------- panorama anual ----------------
   const panoramaAnual = MES_CORTO.map((label, idx) => {
     const mk = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
@@ -119,7 +91,6 @@ export function computeAll(data) {
     ingresosMes, gastosMes, gastosMesCompras, gastosMesNominas, margenMes,
     pendienteCobroTotal, pendientePagoTotal,
     cobrosMesPorMetodo, gastosMesPorMetodo, totalEnB,
-    alerts,
     panoramaAnual, anualIngresos, anualGastos, anualMax,
   };
 }

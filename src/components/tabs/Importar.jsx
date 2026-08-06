@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { readWorkbook, guessColumn, parseValue, isRowEmpty, IMPORT_SPECS } from '../../lib/excelImport.js';
+import { readWorkbook, guessColumn, parseValue, isRowEmpty, IMPORT_SPECS, groupFacturasCompra } from '../../lib/excelImport.js';
 
 const TIPOS = [
   { id: 'ventas', label: 'Facturas de venta', desc: 'Ingresos facturados a clientes.' },
@@ -82,12 +82,18 @@ export default function Importar({ actions }) {
     });
   }, [dataRows, mapping, spec, headerRowIndex]);
 
+  // Para compras, cada fila del Excel es un producto: se agrupan por factura
+  // (nº + fecha + proveedor) antes de importar, así una factura con varias
+  // líneas queda como un solo registro con sus productos, no uno por línea.
+  const comprasGrupos = useMemo(() => (tipo === 'compras' ? groupFacturasCompra(mappedRows) : null), [tipo, mappedRows]);
+  const importPayload = tipo === 'compras' ? comprasGrupos : mappedRows;
+
   const runImport = async () => {
     setBusy(true);
-    setProgress({ done: 0, total: mappedRows.length });
+    setProgress({ done: 0, total: importPayload.length });
     try {
       const fn = actions[IMPORT_ACTIONS[tipo]];
-      const r = await fn(mappedRows, (done, total) => setProgress({ done, total }));
+      const r = await fn(importPayload, (done, total) => setProgress({ done, total }));
       setResult(r);
     } catch (err) {
       setError('Error durante la importación: ' + (err.message || err));
@@ -178,7 +184,10 @@ export default function Importar({ actions }) {
             </div>
           </div>
 
-          <div className="section-title">Vista previa <span className="count">{dataRows.length} fila(s) detectadas</span></div>
+          <div className="section-title">
+            Vista previa <span className="count">{dataRows.length} fila(s) detectadas</span>
+            {tipo === 'compras' && <span className="count">{comprasGrupos.length} factura(s) agrupadas</span>}
+          </div>
           <div className="tblwrap" style={{ marginBottom: 20 }}>
             <table>
               <thead><tr>{spec.fields.map((f) => <th key={f.key}>{f.label}</th>)}</tr></thead>
@@ -192,8 +201,12 @@ export default function Importar({ actions }) {
 
           <div className="modal-actions" style={{ justifyContent: 'flex-start' }}>
             <button className="btn ghost" onClick={reset}>Cancelar</button>
-            <button className="btn" disabled={busy || mappedRows.length === 0} onClick={runImport}>
-              {busy ? `Importando ${progress ? `${progress.done}/${progress.total}` : '…'}` : `Importar ${dataRows.length} fila(s)`}
+            <button className="btn" disabled={busy || importPayload.length === 0} onClick={runImport}>
+              {busy
+                ? `Importando ${progress ? `${progress.done}/${progress.total}` : '…'}`
+                : tipo === 'compras'
+                ? `Importar ${comprasGrupos.length} factura(s)`
+                : `Importar ${dataRows.length} fila(s)`}
             </button>
           </div>
         </>

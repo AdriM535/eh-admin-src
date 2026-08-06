@@ -8,6 +8,7 @@ const emptyData = () => ({
   personal: [],
   facturasVenta: [],
   facturasCompra: [],
+  facturaCompraLineas: [],
   abonos: [],
   nominas: [],
   presupuestos: [],
@@ -22,6 +23,7 @@ const TABLES = {
   personal: 'personal',
   facturasVenta: 'facturas_venta',
   facturasCompra: 'facturas_compra',
+  facturaCompraLineas: 'factura_compra_lineas',
   abonos: 'abonos',
   nominas: 'nominas',
   presupuestos: 'presupuestos',
@@ -129,10 +131,36 @@ export function useData(userId) {
     return f;
   };
 
-  // ---------------- FACTURAS DE COMPRA ----------------
-  const saveFacturaCompra = (f) => saveRow('facturas_compra', 'facturasCompra', f);
+  // ---------------- FACTURAS DE COMPRA (cabecera + líneas de producto) ----------------
+  // Igual que los presupuestos: se reemplazan todas las líneas en cada guardado.
+  const saveFacturaCompra = async (f) => {
+    const { lineas, ...cabecera } = f;
+    const total = (lineas || []).reduce((s, l) => s + Number(l.importe || 0), 0);
+    const saved = await saveRow('facturas_compra', 'facturasCompra', { ...cabecera, total });
+
+    if (cabecera.id) {
+      await supabase.from('factura_compra_lineas').delete().eq('factura_compra_id', saved.id);
+    }
+    const lineasPayload = (lineas || []).filter((l) => l.producto).map((l, idx) => ({
+      factura_compra_id: saved.id,
+      producto: l.producto,
+      cantidad: Number(l.cantidad) || 1,
+      precio_unitario: Number(l.precioUnitario) || 0,
+      tasa_iva: Number(l.tasaIva) ?? 21,
+      precio_unitario_con_iva: Number(l.precioUnitarioConIva) || 0,
+      importe: Number(l.importe) || 0,
+      orden: idx,
+    }));
+    if (lineasPayload.length > 0) {
+      const { error: err } = await supabase.from('factura_compra_lineas').insert(lineasPayload);
+      if (err) throw err;
+    }
+    await fetchTable('facturaCompraLineas');
+    return saved;
+  };
+
   const deleteFacturaCompra = async (id) => {
-    if (!window.confirm('¿Eliminar esta factura de compra?')) return;
+    if (!window.confirm('¿Eliminar esta factura de compra y sus líneas?')) return;
     const f = dataRef.current.facturasCompra.find((x) => x.id === id);
     await deleteRow('facturas_compra', 'facturasCompra', id);
     return f;
@@ -226,34 +254,51 @@ export function useData(userId) {
     return { ok, fail, errors };
   };
 
-  const importFacturasCompra = async (rows, onProgress) => {
+  // `groups` = facturas ya agrupadas por (fecha + nº factura + proveedor), cada una
+  // con su array `lineas` de productos — ver excelImport.js:groupFacturasCompra.
+  const importFacturasCompra = async (groups, onProgress) => {
     const obrasCache = dataRef.current.obras.slice();
     const personalCache = dataRef.current.personal.slice();
     let ok = 0;
     let fail = 0;
     const errors = [];
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
       try {
-        const obraId = await findOrCreateByName('obras', 'obras', obrasCache, r.obraNombre, { estado: 'activa' });
+        const obraId = await findOrCreateByName('obras', 'obras', obrasCache, g.obraNombre, { estado: 'activa' });
         let personalId = null;
-        if (r.tipoGasto === 'autonomo' && r.proveedor) {
-          personalId = await findOrCreateByName('personal', 'personal', personalCache, r.proveedor, { tipo: 'autonomo' });
+        if (!obraId && g.categoriaGeneral === 'autonomo' && g.proveedor) {
+          personalId = await findOrCreateByName('personal', 'personal', personalCache, g.proveedor, { tipo: 'autonomo' });
         }
-        await insertRow('facturas_compra', 'facturasCompra', {
-          obraId, tipoGasto: r.tipoGasto || 'material', personalId,
-          fecha: r.fecha || null, proveedor: r.proveedor || '', numeroFactura: r.numeroFactura || '',
-          concepto: r.concepto || '', baseImponible: r.baseImponible, tipoIva: r.tipoIva ?? 21,
-          total: r.total || 0, metodoPago: r.metodoPago || 'tarjeta', pagadoPor: r.pagadoPor || '',
-          pagado: r.pagado !== false, notas: r.notas || '',
+        const total = (g.lineas || []).reduce((s, l) => s + Number(l.importe || 0), 0);
+        const saved = await insertRow('facturas_compra', 'facturasCompra', {
+          obraId, categoriaGeneral: obraId ? null : (g.categoriaGeneral || 'otro'), personalId,
+          fecha: g.fecha || null, proveedor: g.proveedor || '', numeroFactura: g.numeroFactura || '',
+          total, metodoPago: g.metodoPago || 'tarjeta', pagadoPor: g.pagadoPor || '',
+          pagado: g.pagado !== false, notas: g.notas || '',
         });
+        const lineasPayload = (g.lineas || []).filter((l) => l.producto).map((l, idx) => ({
+          factura_compra_id: saved.id,
+          producto: l.producto,
+          cantidad: Number(l.cantidad) || 1,
+          precio_unitario: Number(l.precioUnitario) || 0,
+          tasa_iva: Number(l.tasaIva) ?? 21,
+          precio_unitario_con_iva: Number(l.precioUnitarioConIva) || 0,
+          importe: Number(l.importe) || 0,
+          orden: idx,
+        }));
+        if (lineasPayload.length > 0) {
+          const { error: err } = await supabase.from('factura_compra_lineas').insert(lineasPayload);
+          if (err) throw err;
+        }
         ok++;
       } catch (err) {
         fail++;
-        errors.push(`Fila ${i + 2}: ${err.message || err}`);
+        errors.push(`Factura ${g.numeroFactura || i + 1}: ${err.message || err}`);
       }
-      if (onProgress) onProgress(i + 1, rows.length);
+      if (onProgress) onProgress(i + 1, groups.length);
     }
+    await fetchTable('facturaCompraLineas');
     return { ok, fail, errors };
   };
 

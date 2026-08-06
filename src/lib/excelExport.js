@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
-import { todayISO } from './utils.js';
+import { todayISO, trimestreDe } from './utils.js';
+import { CATEGORIAS_GENERALES } from './constants.js';
 
 export function exportToExcel(data, calc) {
   const { clienteById, obraById, personalById } = calc;
@@ -12,6 +13,7 @@ export function exportToExcel(data, calc) {
       Obra: o.nombre,
       Cliente: c ? c.nombre : '',
       Dirección: o.direccion || '',
+      Ciudad: o.ciudad || '',
       Estado: o.estado,
       'Fecha inicio': o.fechaInicio || '',
       'Fecha fin': o.fechaFin || '',
@@ -50,19 +52,39 @@ export function exportToExcel(data, calc) {
     const o = obraById(f.obraId);
     const p = personalById(f.personalId);
     return {
+      Año: (f.fecha || '').slice(0, 4) || '',
+      Trimestre: trimestreDe(f.fecha) ? `T${trimestreDe(f.fecha)}` : '',
       Fecha: f.fecha || '',
       Obra: o ? o.nombre : '',
-      Tipo: f.tipoGasto,
-      Proveedor: f.proveedor || '',
+      'Categoría (si no es de obra)': o ? '' : CATEGORIAS_GENERALES.find((c) => c.id === f.categoriaGeneral)?.label || f.categoriaGeneral || '',
+      Comercio: f.proveedor || '',
       'Autónomo/subcontrata': p ? p.nombre : '',
       'Nº Factura': f.numeroFactura || '',
-      Concepto: f.concepto || '',
       'Total (€)': f.total,
       'Método de pago': f.metodoPago || '',
       Pagado: f.pagado ? 'Sí' : 'No',
     };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(compraRows), 'Facturas de compra');
+
+  const lineaCompraRows = data.facturaCompraLineas
+    .slice()
+    .sort((a, b) => a.orden - b.orden)
+    .map((l) => {
+      const f = data.facturasCompra.find((x) => x.id === l.facturaCompraId);
+      return {
+        Fecha: f ? f.fecha || '' : '',
+        'Nº Factura': f ? f.numeroFactura || '' : '',
+        Comercio: f ? f.proveedor || '' : '',
+        Producto: l.producto,
+        Cantidad: l.cantidad,
+        'Precio unidad (€)': l.precioUnitario,
+        'Tasa IVA %': l.tasaIva,
+        'Precio unidad con IVA (€)': l.precioUnitarioConIva,
+        'Importe (€)': l.importe,
+      };
+    });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lineaCompraRows), 'Productos de compra');
 
   const abonoRows = data.abonos.map((a) => {
     const o = obraById(a.obraId);

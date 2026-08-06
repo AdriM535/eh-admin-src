@@ -48,3 +48,18 @@ export function calcIva(baseImponible, tipoIva) {
   const totalIva = Math.round(base * (tipo / 100) * 100) / 100;
   return { totalIva, total: Math.round((base + totalIva) * 100) / 100 };
 }
+
+export const trimestreDe = (fechaISO) => {
+  if (!fechaISO) return null;
+  const mes = Number(String(fechaISO).slice(5, 7));
+  return isNaN(mes) ? null : Math.ceil(mes / 3);
+};
+
+export function calcLineaCompra(cantidad, precioUnitario, tasaIva) {
+  const cant = Number(cantidad) || 0;
+  const precio = Number(precioUnitario) || 0;
+  const tasa = Number(tasaIva) || 0;
+  const precioUnitarioConIva = Math.round(precio * (1 + tasa / 100) * 100) / 100;
+  const importe = Math.round(cant * precioUnitarioConIva * 100) / 100;
+  return { precioUnitarioConIva, importe };
+}

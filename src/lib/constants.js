@@ -5,10 +5,13 @@ export const ESTADOS_OBRA = [
   { id: 'cancelada', label: 'Cancelada' },
 ];
 
-export const TIPOS_GASTO = [
-  { id: 'material', label: 'Material' },
+// Categoría de una factura de compra que NO está asignada a una obra
+// concreta (insumo general de la empresa).
+export const CATEGORIAS_GENERALES = [
+  { id: 'gasolina', label: 'Gasolina' },
+  { id: 'mantenimiento', label: 'Servicios de mantenimiento' },
+  { id: 'material_general', label: 'Material en general' },
   { id: 'autonomo', label: 'Autónomo / subcontrata' },
-  { id: 'vehiculo', label: 'Vehículo' },
   { id: 'otro', label: 'Otro' },
 ];
 

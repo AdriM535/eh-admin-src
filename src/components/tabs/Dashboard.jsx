@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { fmtMoney } from '../../lib/utils.js';
 
 export default function Dashboard({ calc, setTab }) {
-  const [alertsOpen, setAlertsOpen] = useState(true);
   const {
     ingresosMes, gastosMes, margenMes, pendienteCobroTotal, pendientePagoTotal,
-    cobrosMesPorMetodo, gastosMesPorMetodo, totalEnB, alerts, obrasActivas,
+    cobrosMesPorMetodo, gastosMesPorMetodo, totalEnB, obrasActivas,
     panoramaAnual, anualIngresos, anualGastos, anualMax, currentYear,
   } = calc;
 
@@ -30,21 +28,6 @@ export default function Dashboard({ calc, setTab }) {
         <div className="cell"><div className="lbl">Cobrado en B (total)</div><div className="val">{fmtMoney(totalEnB)}</div></div>
         <div className="cell"><div className="lbl">Año</div><div className="val">{currentYear}</div></div>
       </div>
-
-      <div className="section-title" style={{ cursor: 'pointer' }} onClick={() => setAlertsOpen((o) => !o)}>
-        {alertsOpen ? '▾' : '▸'} Alertas activas <span className="count">{alerts.length}</span>
-        {!alertsOpen && alerts.some((a) => a.crit) && <span className="pill brick">urgentes</span>}
-      </div>
-      {alertsOpen && (
-        <div className="alertlist">
-          {alerts.length === 0 && <div className="empty">Sin alertas pendientes por ahora.</div>}
-          {alerts.map((a, i) => (
-            <div key={i} className={'alertrow' + (a.crit ? ' crit' : '')}>
-              <span className="tag">{a.tag}</span>{a.txt}
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="section-title">Panorama anual {currentYear}</div>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: '18px 18px 8px' }}>

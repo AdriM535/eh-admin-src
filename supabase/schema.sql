@@ -31,6 +31,7 @@ create table if not exists obras (
   nombre text not null,
   cliente_id uuid references clientes(id) on delete set null,
   direccion text,
+  ciudad text,
   estado text not null default 'presupuesto',    -- presupuesto | activa | finalizada | cancelada
   fecha_inicio date,
   fecha_fin date,
@@ -84,21 +85,20 @@ create index if not exists facturas_venta_obra_id_idx on facturas_venta(obra_id)
 create index if not exists facturas_venta_cliente_id_idx on facturas_venta(cliente_id);
 
 -- ---------------------------------------------------------------------------
--- FACTURAS DE COMPRA (gastos: material, autónomos/subcontratas, vehículo...)
+-- FACTURAS DE COMPRA (gastos): cabecera de la factura. Se asigna a UNA obra,
+-- o si no es de una obra concreta, se clasifica como insumo general
+-- (gasolina, mantenimiento, material general, autónomo, otro). Los productos
+-- de la factura van en factura_compra_lineas.
 -- ---------------------------------------------------------------------------
 create table if not exists facturas_compra (
   id uuid primary key default gen_random_uuid(),
   obra_id uuid references obras(id) on delete set null,
-  tipo_gasto text not null default 'material',    -- material | autonomo | vehiculo | otro
+  categoria_general text,                         -- gasolina | mantenimiento | material_general | autonomo | otro (solo si no hay obra_id)
   personal_id uuid references personal(id) on delete set null,
   fecha date,
-  proveedor text,
+  proveedor text,                                 -- comercio
   numero_factura text,
-  concepto text,
-  base_imponible numeric,
-  tipo_iva numeric default 21,
-  total_iva numeric,
-  total numeric not null default 0,
+  total numeric not null default 0,               -- suma de factura_compra_lineas.importe
   metodo_pago text,                               -- efectivo | tarjeta | transferencia
   pagado_por text,
   pagado boolean not null default true,
@@ -110,6 +110,20 @@ create table if not exists facturas_compra (
 );
 create index if not exists facturas_compra_obra_id_idx on facturas_compra(obra_id);
 create index if not exists facturas_compra_personal_id_idx on facturas_compra(personal_id);
+
+create table if not exists factura_compra_lineas (
+  id uuid primary key default gen_random_uuid(),
+  factura_compra_id uuid not null references facturas_compra(id) on delete cascade,
+  producto text not null,
+  cantidad numeric not null default 1,
+  precio_unitario numeric not null default 0,
+  tasa_iva numeric not null default 21,
+  precio_unitario_con_iva numeric not null default 0,
+  importe numeric not null default 0,
+  orden integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists factura_compra_lineas_factura_compra_id_idx on factura_compra_lineas(factura_compra_id);
 
 -- ---------------------------------------------------------------------------
 -- ABONOS Y ANTICIPOS DE CLIENTES
@@ -214,7 +228,7 @@ declare
 begin
   for t in select unnest(array[
     'clientes','obras','personal','facturas_venta','facturas_compra',
-    'abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
+    'factura_compra_lineas','abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
   ])
   loop
     execute format('alter table %I enable row level security;', t);
@@ -263,7 +277,7 @@ declare
 begin
   for t in select unnest(array[
     'clientes','obras','personal','facturas_venta','facturas_compra',
-    'abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
+    'factura_compra_lineas','abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
   ])
   loop
     begin

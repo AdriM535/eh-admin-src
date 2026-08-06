@@ -27,6 +27,13 @@ desde el móvil (interfaz responsive).
    (PDF/fotos) y añade las tablas a la publicación de Realtime para que los
    cambios de un usuario se vean en el momento en las pantallas de los demás.
 
+   Si el proyecto de Supabase **ya estaba en uso** antes de este cambio
+   (obras/facturas de compra creadas con la versión anterior), `schema.sql`
+   no basta — hay que ejecutar además, una sola vez,
+   [`supabase/migration_002_compras_lineas.sql`](./supabase/migration_002_compras_lineas.sql)
+   en el SQL Editor, para añadir la ciudad de las obras y pasar las facturas
+   de compra a líneas de producto.
+
 El modelo de seguridad es: **cualquier usuario autenticado tiene acceso
 completo de lectura/escritura** a todas las tablas. No hay aislamiento por
 usuario porque la operación es compartida por el equipo — el control de
@@ -77,16 +84,18 @@ instalar nada aparte, basta con abrir la URL en el navegador (y se puede
 ## Qué incluye
 
 - **Clientes** — ficha con NIF, contacto y obras vinculadas.
-- **Obras** — proyecto/servicio por cliente, con estado (presupuesto,
-  activa, finalizada, cancelada) y un detalle que resume lo facturado,
-  cobrado, gastado y el margen de cada obra.
+- **Obras** — proyecto/servicio por cliente, con ciudad, estado (presupuesto,
+  activa, finalizada, cancelada), filtro por ciudad, y un detalle que resume
+  lo facturado, cobrado, gastado y el margen de cada obra.
 - **Facturas de venta** — ingresos a clientes: serie/número, base + IVA,
   si está cobrada y por qué medio, y un marcador de **"cobro en B"** para
   el control interno de Sindy (no se declara nada automáticamente; es solo
   visibilidad de caja).
-- **Facturas de compra** — gastos de material, autónomos/subcontratas,
-  vehículo u otros, con proveedor, importe, método de pago y adjunto del
-  ticket/factura (PDF o foto).
+- **Facturas de compra** — cabecera (fecha, año/trimestre, obra o categoría
+  de insumo general —gasolina, mantenimiento, material general,
+  autónomo/subcontrata, otro—, nº de factura, comercio) con sus **líneas de
+  producto** (cantidad, precio unidad, IVA, precio con IVA, importe), método
+  de pago y adjunto del ticket/factura (PDF o foto).
 - **Abonos y anticipos** — pagos de clientes no vinculados a una factura
   concreta (anticipos de inicio de obra, entregas a cuenta…).
 - **Presupuestos** — cabecera + líneas (concepto, cantidad, precio), con
