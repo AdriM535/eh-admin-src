@@ -189,3 +189,4 @@ src/
     forms/                   Un formulario por entidad
     tabs/                    Una pestaña por sección de la app
 ```
+
