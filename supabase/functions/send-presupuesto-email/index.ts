@@ -1,21 +1,19 @@
-// Edge Function: envía un presupuesto por correo al cliente usando Resend.
+// Edge Function: envía un presupuesto por correo al cliente, usando tu
+// propio Gmail/Outlook por SMTP (sin necesitar un dominio propio).
 //
 // Despliegue (una vez, con Supabase CLI ya logueado y con el proyecto
 // enlazado — ver supabase/functions/README.md):
 //   supabase functions deploy send-presupuesto-email
-//   supabase secrets set RESEND_API_KEY=re_xxxxxxxx
-//   supabase secrets set RESEND_FROM_EMAIL="Estructuras Humanizadoras <presupuestos@tudominio.com>"
+//   supabase secrets set SMTP_USER=tucorreo@gmail.com
+//   supabase secrets set SMTP_PASS=contraseña_de_aplicación
 //
-// Con la cuenta gratuita de Resend y sin verificar un dominio propio, los
-// envíos solo llegan a la dirección con la que te registraste en Resend
-// (modo pruebas). Para poder mandar presupuestos a cualquier cliente hace
-// falta verificar un dominio en Resend y usarlo en RESEND_FROM_EMAIL.
+// El correo se envía "desde" tu propia cuenta de Gmail/Outlook — no hace
+// falta comprar ni verificar ningún dominio. Ver supabase/functions/README.md
+// para cómo generar la contraseña de aplicación.
 
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'Estructuras Humanizadoras <onboarding@resend.dev>';
+import { sendMail } from '../_shared/sendMail.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,8 +27,6 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    if (!RESEND_API_KEY) throw new Error('Falta configurar el secreto RESEND_API_KEY en el proyecto de Supabase.');
-
     const { presupuestoId, destinatario } = await req.json();
     if (!presupuestoId || !destinatario) throw new Error('Falta presupuestoId o destinatario.');
 
@@ -86,20 +82,11 @@ Deno.serve(async (req) => {
         ${presupuesto.notas ? `<p style="color:#6b6259;font-size:13px;white-space:pre-wrap;">${escapeHtml(presupuesto.notas)}</p>` : ''}
       </div>`;
 
-    const resendRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [destinatario],
-        subject: `Presupuesto ${presupuesto.numero || ''} — Estructuras Humanizadoras`,
-        html,
-      }),
+    await sendMail({
+      to: destinatario,
+      subject: `Presupuesto ${presupuesto.numero || ''} — Estructuras Humanizadoras`,
+      html,
     });
-    if (!resendRes.ok) {
-      const body = await resendRes.text();
-      throw new Error(`Resend devolvió un error: ${body}`);
-    }
 
     await supabase
       .from('presupuestos')

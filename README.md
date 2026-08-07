@@ -91,14 +91,14 @@ En resumen:
 1. Instala la Supabase CLI, `supabase login` y `supabase link --project-ref TU_REF`.
 2. `supabase functions deploy send-presupuesto-email` y
    `supabase functions deploy weekly-backup`.
-3. Crea una cuenta gratuita en [Resend](https://resend.com) y ejecuta:
+3. Los correos se envían desde tu propio Gmail/Outlook (SMTP), sin
+   necesitar dominio propio — crea una "contraseña de aplicación" en tu
+   cuenta (pasos detallados en `supabase/functions/README.md`) y ejecuta:
    ```
-   supabase secrets set RESEND_API_KEY=re_xxxxxxxx
+   supabase secrets set SMTP_USER=tucorreo@gmail.com
+   supabase secrets set SMTP_PASS=la_contraseña_de_aplicación
    supabase secrets set BACKUP_EMAIL_TO=tucorreo@ejemplo.com
    ```
-   Sin verificar un dominio propio en Resend, solo se puede enviar a la
-   dirección con la que te registraste en Resend — usa esa como
-   `BACKUP_EMAIL_TO` mientras no verifiques un dominio.
 4. En el Dashboard: **Edge Functions → weekly-backup → Cron** → añade un
    horario semanal (ej. `0 6 * * 1`, lunes 6:00 UTC).
 
