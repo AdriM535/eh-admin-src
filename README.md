@@ -27,31 +27,32 @@ desde el móvil (interfaz responsive).
    (PDF/fotos) y añade las tablas a la publicación de Realtime para que los
    cambios de un usuario se vean en el momento en las pantallas de los demás.
 
-   Si el proyecto de Supabase **ya estaba en uso** antes de este cambio
-   (obras/facturas de compra creadas con la versión anterior), `schema.sql`
-   no basta — hay que ejecutar además, una sola vez,
-   [`supabase/migration_002_compras_lineas.sql`](./supabase/migration_002_compras_lineas.sql)
-   en el SQL Editor, para añadir la ciudad de las obras y pasar las facturas
-   de compra a líneas de producto.
+   Si el proyecto de Supabase **ya estaba en uso** antes de este cambio,
+   `schema.sql` no basta — hay que ejecutar además, una sola vez y en orden,
+   cada migración pendiente en el SQL Editor:
+   - [`migration_002_compras_lineas.sql`](./supabase/migration_002_compras_lineas.sql) — ciudad de obras y líneas de producto en compras.
+   - [`migration_003_nomina_bono_extra.sql`](./supabase/migration_003_nomina_bono_extra.sql) — nóminas puntuales (bonos/adelantos).
+   - [`migration_004_caja.sql`](./supabase/migration_004_caja.sql) — Caja: entregas de efectivo a personal.
+   - [`migration_005_roles_direcciones_envios.sql`](./supabase/migration_005_roles_direcciones_envios.sql) — roles de usuario, dirección de clientes detallada, envío de presupuestos y respaldo semanal.
 
-El modelo de seguridad es: **cualquier usuario autenticado tiene acceso
-completo de lectura/escritura** a todas las tablas. No hay aislamiento por
-usuario porque la operación es compartida por el equipo — el control de
-acceso real se hace decidiendo quién puede tener una cuenta (paso siguiente).
+## 3. Roles de usuario
 
-## 3. Configurar el acceso de usuarios (importante)
+Hay dos niveles de cuenta, controlados por la tabla `perfiles`:
 
-Por defecto, Supabase permite que cualquiera se registre desde el formulario
-de "Crear cuenta" de la app, y como el acceso es compartido, **cualquier
-cuenta nueva vería toda la operación**. Se recomienda:
+- **Admin** — acceso completo de lectura/escritura a todo (como hasta ahora).
+- **Operario** — solo puede fotografiar/subir facturas de compra propias
+  (para justificar gastos y entregas de caja); no ve clientes, ventas,
+  nóminas, presupuestos ni el resto. Este bloqueo está reforzado en la
+  base de datos (RLS), no solo oculto en la pantalla.
 
-1. Ve a **Authentication → Providers → Email** y desactiva "Allow new users
-   to sign up" una vez que Sindy y su equipo ya tengan cuenta.
-2. Para añadir gente al equipo, usa **Authentication → Users → Invite user**
-   (les llega un email para poner su contraseña), en lugar de dejar que se
-   registren solos.
-3. Si prefieres exigir verificación de email antes de poder entrar, actívalo
-   en **Authentication → Providers → Email → Confirm email**.
+Cualquiera puede seguir creando una cuenta desde "Crear cuenta nueva" en el
+login — **entra automáticamente como Operario**. Para dar acceso completo a
+alguien, entra como admin a la pestaña **Usuarios** y cambia su rol a
+"Admin"; ahí también puedes vincular la cuenta de un operario a su ficha de
+Personal, para que la app sepa quién es en la pestaña de caja.
+
+Si prefieres exigir verificación de email antes de poder entrar, actívalo en
+**Authentication → Providers → Email → Confirm email** en Supabase.
 
 ## 4. Configurar el proyecto localmente
 
@@ -81,9 +82,28 @@ funciona igual en el ordenador de Sindy que en su móvil — no hace falta
 instalar nada aparte, basta con abrir la URL en el navegador (y se puede
 "Añadir a pantalla de inicio" para que se comporte como una app).
 
+## 6. Envío de presupuestos por correo y respaldo semanal (opcional)
+
+Estas dos funciones necesitan desplegar dos Edge Functions en Supabase —
+instrucciones completas en [`supabase/functions/README.md`](./supabase/functions/README.md).
+En resumen:
+
+1. Instala la Supabase CLI, `supabase login` y `supabase link --project-ref TU_REF`.
+2. `supabase functions deploy send-presupuesto-email` y
+   `supabase functions deploy weekly-backup`.
+3. Crea una cuenta gratuita en [Resend](https://resend.com) y ejecuta
+   `supabase secrets set RESEND_API_KEY=re_xxxxxxxx`.
+4. En el Dashboard: **Edge Functions → weekly-backup → Cron** → añade un
+   horario semanal (ej. `0 6 * * 1`, lunes 6:00 UTC).
+
+Mientras no despliegues estas funciones, el botón "Enviar por correo" de
+Presupuestos dará error y la pestaña Respaldos aparecerá vacía — el resto
+de la app funciona igual.
+
 ## Qué incluye
 
-- **Clientes** — ficha con NIF, contacto y obras vinculadas.
+- **Clientes** — ficha con NIF, contacto, dirección detallada (calle,
+  número, piso/interior, municipio, provincia, CP) y obras vinculadas.
 - **Obras** — proyecto/servicio por cliente, con ciudad, estado (presupuesto,
   activa, finalizada, cancelada), filtro por ciudad, y un detalle que resume
   lo facturado, cobrado, gastado y el margen de cada obra.
@@ -99,8 +119,10 @@ instalar nada aparte, basta con abrir la URL en el navegador (y se puede
 - **Abonos y anticipos** — pagos de clientes no vinculados a una factura
   concreta (anticipos de inicio de obra, entregas a cuenta…).
 - **Presupuestos** — cabecera + líneas (concepto, cantidad, precio), con
-  estado (borrador/enviado/aceptado/rechazado) y un botón para generar una
-  vista imprimible/PDF desde el navegador.
+  estado (borrador/enviado/aceptado/rechazado), un botón para generar una
+  vista imprimible/PDF desde el navegador y otro para **enviarlo por
+  correo** directamente al cliente (requiere desplegar la Edge Function,
+  ver sección 6).
 - **Personal** — empleados y autónomos que trabajan para la empresa.
 - **Nóminas** — liquidaciones periódicas del personal empleado.
 - **Incidencias** — daños o sobrecostes por no seguir el protocolo de obra
@@ -121,6 +143,14 @@ instalar nada aparte, basta con abrir la URL en el navegador (y se puede
   incluida una hoja "Ingresos y Egresos" en orden cronológico con las
   cuentas contables (Debe/Haber, códigos orientativos del plan contable
   español) que afecta cada movimiento, pensada para pasarla a la gestoría.
+- **Exportar mes para gestoría** (botón en Panorama) — un Excel de un solo
+  mes con las ventas con el mismo detalle de siempre y las compras
+  resumidas **por factura** (no por producto), con el total desglosado por
+  tipo de IVA (21/10/4/0%).
+- **Usuarios** (solo Admin) — cambia el rol de cada cuenta (Admin/Operario)
+  y la vincula a una ficha de Personal.
+- **Respaldos** (solo Admin) — lista y descarga los Excel de respaldo
+  semanal generados solos por la Edge Function `weekly-backup`.
 
 ## Sobre el archivo de partida
 

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { supabase } from '../../supabaseClient.js';
 import { fmtMoney, fmtDate } from '../../lib/utils.js';
 import { ESTADOS_PRESUPUESTO } from '../../lib/constants.js';
 
@@ -65,7 +67,23 @@ function abrirImpresion(p, lineas, cliente, obra) {
 }
 
 export default function Presupuestos({ data, actions, calc, setModal }) {
+  const [sendingId, setSendingId] = useState(null);
   const presupuestos = data.presupuestos.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  const enviarPorCorreo = async (p, cliente) => {
+    const destinatario = window.prompt('¿A qué email se envía el presupuesto?', cliente?.email || p.enviadoA || '');
+    if (!destinatario) return;
+    setSendingId(p.id);
+    const { data: res, error } = await supabase.functions.invoke('send-presupuesto-email', {
+      body: { presupuestoId: p.id, destinatario },
+    });
+    setSendingId(null);
+    if (error || !res?.ok) {
+      alert('No se pudo enviar el correo: ' + (res?.error || error?.message || 'error desconocido'));
+      return;
+    }
+    alert('Presupuesto enviado a ' + destinatario);
+  };
 
   const estadoPill = (estado) => {
     const map = { borrador: '', enviado: 'steel', aceptado: 'green', rechazado: 'brick' };
@@ -100,8 +118,12 @@ export default function Presupuestos({ data, actions, calc, setModal }) {
                   <td>{estadoPill(p.estado)}</td>
                   <td>
                     <button className="btn ghost small" onClick={() => abrirImpresion(p, lineas, cliente, obra)}>Imprimir</button>{' '}
+                    <button className="btn ghost small" disabled={sendingId === p.id} onClick={() => enviarPorCorreo(p, cliente)}>
+                      {sendingId === p.id ? 'Enviando…' : 'Enviar por correo'}
+                    </button>{' '}
                     <button className="btn ghost small" onClick={() => setModal({ type: 'presupuesto', initial: p })}>Editar</button>{' '}
                     <button className="btn danger small" onClick={() => actions.deletePresupuesto(p.id)}>Eliminar</button>
+                    {p.fechaEnvio && <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>Enviado a {p.enviadoA} el {fmtDate(p.fechaEnvio)}</div>}
                   </td>
                 </tr>
               );

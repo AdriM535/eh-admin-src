@@ -11,6 +11,8 @@ const NAV_ITEMS = [
   { id: 'nominas', label: 'Nóminas', n: '09' },
   { id: 'incidencias', label: 'Incidencias', n: '10' },
   { id: 'importar', label: 'Importar Excel', n: '11' },
+  { id: 'usuarios', label: 'Usuarios', n: '12' },
+  { id: 'respaldos', label: 'Respaldos', n: '13' },
 ];
 
 export default function Sidebar({ tab, setTab, data, onExport, userEmail, onSignOut }) {

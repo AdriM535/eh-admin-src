@@ -1,5 +1,15 @@
 import { useState } from 'react';
 
+const direccionCompleta = (c) => {
+  const partes = [
+    [c.calle, c.numero].filter(Boolean).join(' '),
+    c.interior,
+    [c.cp, c.municipio].filter(Boolean).join(' '),
+    c.provincia,
+  ].filter(Boolean);
+  return partes.length > 0 ? partes.join(', ') : c.direccion || '';
+};
+
 export default function Clientes({ data, actions, calc, setModal }) {
   const [search, setSearch] = useState('');
   const clientes = data.clientes.filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()));
@@ -27,7 +37,7 @@ export default function Clientes({ data, actions, calc, setModal }) {
               const numObras = data.obras.filter((o) => o.clienteId === c.id).length;
               return (
                 <tr key={c.id}>
-                  <td><b>{c.nombre}</b>{c.direccion && <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{c.direccion}</div>}</td>
+                  <td><b>{c.nombre}</b>{direccionCompleta(c) && <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{direccionCompleta(c)}</div>}</td>
                   <td>{c.nif || '—'}</td>
                   <td>{c.telefono || '—'}</td>
                   <td>{c.email || '—'}</td>

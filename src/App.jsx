@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { useAuth } from './hooks/useAuth.js';
 import { useData } from './hooks/useData.js';
 import { useDocuments } from './hooks/useDocuments.js';
+import { usePerfil } from './hooks/usePerfil.js';
 import { computeAll } from './lib/computations.js';
 import { exportToExcel } from './lib/excelExport.js';
 
 import Login from './components/Auth/Login.jsx';
 import Sidebar from './components/Sidebar.jsx';
+import OperarioPanel from './components/OperarioPanel.jsx';
+import Usuarios from './components/tabs/Usuarios.jsx';
+import Respaldos from './components/tabs/Respaldos.jsx';
 
 import Dashboard from './components/tabs/Dashboard.jsx';
 import Obras from './components/tabs/Obras.jsx';
@@ -47,10 +51,15 @@ export default function App() {
 function Operacion({ user, onSignOut }) {
   const { data, loading, error, actions } = useData(user.id);
   const docs = useDocuments();
+  const { perfil, loading: perfilLoading } = usePerfil(user.id);
   const [tab, setTab] = useState('dashboard');
   const [modal, setModal] = useState(null);
 
-  if (loading) return <div className="loading">Cargando obras y facturas…</div>;
+  if (loading || perfilLoading) return <div className="loading">Cargando obras y facturas…</div>;
+
+  if (perfil.role === 'operario') {
+    return <OperarioPanel data={data} actions={actions} docs={docs} perfil={perfil} userEmail={user.email} onSignOut={onSignOut} />;
+  }
 
   const calc = computeAll(data);
 
@@ -79,6 +88,8 @@ function Operacion({ user, onSignOut }) {
         {tab === 'incidencias' && <Incidencias {...tabProps} />}
         {tab === 'importar' && <Importar {...tabProps} />}
         {tab === 'caja' && <Caja {...tabProps} />}
+        {tab === 'usuarios' && <Usuarios {...tabProps} />}
+        {tab === 'respaldos' && <Respaldos {...tabProps} />}
       </main>
 
       {modal?.type === 'obra' && <ObraForm initial={modal.initial} clientes={data.clientes} onSave={wrap(actions.saveObra)} onClose={() => setModal(null)} />}

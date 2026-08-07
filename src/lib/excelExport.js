@@ -237,3 +237,89 @@ export function exportToExcel(data, calc) {
 
   XLSX.writeFile(wb, `Estructuras-Humanizadoras-${todayISO()}.xlsx`);
 }
+
+// ---------------------------------------------------------------------------
+// EXPORTACIÓN MENSUAL PARA LA GESTORÍA
+// Ventas: mismo detalle que siempre (una fila por factura, con base/IVA/total).
+// Compras: una fila por factura (no por producto), con el total desglosado
+// por tipo de IVA — para eso se agregan las líneas de cada factura.
+// ---------------------------------------------------------------------------
+const TIPOS_IVA_HABITUALES = [21, 10, 4, 0];
+
+function desgloseIvaFacturaCompra(lineas) {
+  const acc = {};
+  TIPOS_IVA_HABITUALES.forEach((t) => { acc[t] = { base: 0, cuota: 0 }; });
+  acc.otro = { base: 0, cuota: 0 };
+  lineas.forEach((l) => {
+    const tasa = Number(l.tasaIva) || 0;
+    const base = Number(l.cantidad || 0) * Number(l.precioUnitario || 0);
+    const total = Number(l.importe || 0);
+    const bucket = TIPOS_IVA_HABITUALES.includes(tasa) ? tasa : 'otro';
+    acc[bucket].base += base;
+    acc[bucket].cuota += total - base;
+  });
+  return acc;
+}
+
+export function exportGestoriaMensual(data, calc, year, month) {
+  const { clienteById, obraById } = calc;
+  const mk = `${year}-${String(month).padStart(2, '0')}`;
+  const wb = XLSX.utils.book_new();
+
+  // ------------- Ventas del mes: mismo detalle de siempre -------------
+  const ventasMes = data.facturasVenta
+    .filter((f) => (f.fechaExpedicion || '').slice(0, 7) === mk)
+    .slice()
+    .sort((a, b) => (a.fechaExpedicion || '').localeCompare(b.fechaExpedicion || ''));
+  const ventaRows = ventasMes.map((f) => {
+    const o = obraById(f.obraId);
+    const c = clienteById(f.clienteId);
+    return {
+      Fecha: f.fechaExpedicion || '', 'Serie/Nº': `${f.serie || ''}${f.numero || ''}`.trim(),
+      Cliente: c ? c.nombre : '', 'NIF cliente': c ? c.nif || '' : '', Obra: o ? o.nombre : '',
+      'Base imponible (€)': f.baseImponible || '', 'Tipo IVA %': f.tipoIva ?? '', 'Cuota IVA (€)': f.totalIva || '',
+      'Total (€)': f.total, Cobrado: f.cobrado ? 'Sí' : 'No', 'Fecha cobro': f.fechaCobro || '', Método: f.metodoCobro || '',
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ventaRows), 'Ventas');
+
+  // ------------- Compras del mes: una fila por factura, con IVA -------------
+  const comprasMes = data.facturasCompra
+    .filter((f) => (f.fecha || '').slice(0, 7) === mk)
+    .slice()
+    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  const compraRows = comprasMes.map((f) => {
+    const o = obraById(f.obraId);
+    const lineas = data.facturaCompraLineas.filter((l) => l.facturaCompraId === f.id);
+    const iva = desgloseIvaFacturaCompra(lineas);
+    const row = {
+      Fecha: f.fecha || '', 'Nº factura': f.numeroFactura || '', Proveedor: f.proveedor || '',
+      Obra: o ? o.nombre : (CATEGORIAS_GENERALES.find((c) => c.id === f.categoriaGeneral)?.label || ''),
+    };
+    TIPOS_IVA_HABITUALES.forEach((t) => {
+      row[`Base ${t}% (€)`] = Math.round(iva[t].base * 100) / 100 || '';
+      row[`Cuota IVA ${t}% (€)`] = Math.round(iva[t].cuota * 100) / 100 || '';
+    });
+    if (iva.otro.base || iva.otro.cuota) {
+      row['Base otro tipo (€)'] = Math.round(iva.otro.base * 100) / 100;
+      row['Cuota IVA otro tipo (€)'] = Math.round(iva.otro.cuota * 100) / 100;
+    }
+    row['Total (€)'] = f.total;
+    row.Pagado = f.pagado ? 'Sí' : 'No';
+    row.Método = f.metodoPago || '';
+    row['Pagado por'] = f.pagadoPor || '';
+    return row;
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(compraRows), 'Compras (resumen)');
+
+  const totalVentas = ventasMes.reduce((s, f) => s + (Number(f.total) || 0), 0);
+  const totalCompras = comprasMes.reduce((s, f) => s + (Number(f.total) || 0), 0);
+  const resumenRows = [
+    { Concepto: 'Ventas del mes', 'Nº facturas': ventasMes.length, 'Total (€)': totalVentas },
+    { Concepto: 'Compras del mes', 'Nº facturas': comprasMes.length, 'Total (€)': totalCompras },
+    { Concepto: 'Diferencia', 'Nº facturas': '', 'Total (€)': totalVentas - totalCompras },
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumenRows), 'Resumen');
+
+  XLSX.writeFile(wb, `Gestoria-${mk}.xlsx`);
+}

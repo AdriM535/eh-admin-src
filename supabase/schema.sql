@@ -17,7 +17,13 @@ create table if not exists clientes (
   nif text,
   telefono text,
   email text,
-  direccion text,
+  direccion text,                                  -- histórico, en desuso a favor de los campos de abajo
+  calle text,
+  numero text,
+  interior text,
+  municipio text,
+  provincia text,
+  cp text,
   notas text,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
@@ -209,6 +215,8 @@ create table if not exists presupuestos (
   estado text not null default 'borrador',        -- borrador | enviado | aceptado | rechazado
   notas text,
   total numeric not null default 0,
+  enviado_a text,                                 -- email al que se envió por última vez
+  fecha_envio timestamptz,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
@@ -246,31 +254,129 @@ create index if not exists incidencias_obra_id_idx on incidencias(obra_id);
 create index if not exists incidencias_personal_id_idx on incidencias(personal_id);
 
 -- ---------------------------------------------------------------------------
--- ROW LEVEL SECURITY
--- Modelo "operación compartida": cualquier usuario autenticado tiene acceso
--- completo de lectura/escritura. El aislamiento se hace a nivel de cuenta
--- (quién puede registrarse/ser invitado), no a nivel de fila.
+-- PERFILES: rol de cada cuenta (admin ve/gestiona todo; operario solo
+-- puede fotografiar facturas de compra y justificar entregas de caja).
 -- ---------------------------------------------------------------------------
+create table if not exists perfiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  nombre text,
+  role text not null default 'operario',           -- admin | operario
+  personal_id uuid references personal(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- Alta automática de perfil (como operario) cada vez que se registra una
+-- cuenta nueva; Sindy la asciende a admin manualmente si hace falta.
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.perfiles (id, email, role) values (new.id, new.email, 'operario')
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+create or replace function public.is_admin()
+returns boolean language sql security definer set search_path = public stable as $$
+  select exists (select 1 from public.perfiles where id = auth.uid() and role = 'admin');
+$$;
+
+-- ---------------------------------------------------------------------------
+-- RESPALDO SEMANAL (lo genera la Edge Function weekly-backup)
+-- ---------------------------------------------------------------------------
+create table if not exists respaldos_semanales (
+  id uuid primary key default gen_random_uuid(),
+  fecha date not null default current_date,
+  storage_path text not null,
+  nombre_archivo text not null,
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- ROW LEVEL SECURITY
+-- admin: acceso completo a todo. operario: solo lectura de obras/personal/
+-- entregas de caja (para elegir en el formulario) y solo sus propias
+-- facturas de compra (las que él mismo sube). El resto de tablas son
+-- invisibles para el operario.
+-- ---------------------------------------------------------------------------
+alter table perfiles enable row level security;
+drop policy if exists "perfiles_select" on perfiles;
+create policy "perfiles_select" on perfiles for select to authenticated
+  using (id = auth.uid() or is_admin());
+drop policy if exists "perfiles_update_admin" on perfiles;
+create policy "perfiles_update_admin" on perfiles for update to authenticated
+  using (is_admin()) with check (is_admin());
+
 do $$
 declare
   t text;
 begin
   for t in select unnest(array[
-    'clientes','obras','personal','facturas_venta','facturas_compra',
-    'factura_compra_lineas','entregas_efectivo','abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
+    'clientes','facturas_venta','abonos','nominas','presupuestos','presupuesto_lineas',
+    'incidencias','respaldos_semanales'
   ])
   loop
     execute format('alter table %I enable row level security;', t);
     execute format('drop policy if exists "team_full_access" on %I;', t);
+    execute format('drop policy if exists "admin_full_access" on %I;', t);
     execute format(
-      'create policy "team_full_access" on %I for all to authenticated using (true) with check (true);',
+      'create policy "admin_full_access" on %I for all to authenticated using (is_admin()) with check (is_admin());',
       t
     );
   end loop;
 end $$;
 
+do $$
+declare
+  t text;
+begin
+  for t in select unnest(array['obras','personal','entregas_efectivo'])
+  loop
+    execute format('alter table %I enable row level security;', t);
+    execute format('drop policy if exists "team_full_access" on %I;', t);
+    execute format('drop policy if exists "admin_full_access" on %I;', t);
+    execute format('drop policy if exists "operario_read" on %I;', t);
+    execute format(
+      'create policy "admin_full_access" on %I for all to authenticated using (is_admin()) with check (is_admin());',
+      t
+    );
+    execute format('create policy "operario_read" on %I for select to authenticated using (true);', t);
+  end loop;
+end $$;
+
+alter table facturas_compra enable row level security;
+drop policy if exists "team_full_access" on facturas_compra;
+drop policy if exists "admin_full_access" on facturas_compra;
+create policy "admin_full_access" on facturas_compra for all to authenticated using (is_admin()) with check (is_admin());
+drop policy if exists "operario_select_own" on facturas_compra;
+create policy "operario_select_own" on facturas_compra for select to authenticated using (created_by = auth.uid());
+drop policy if exists "operario_insert" on facturas_compra;
+create policy "operario_insert" on facturas_compra for insert to authenticated with check (created_by = auth.uid());
+drop policy if exists "operario_update_own" on facturas_compra;
+create policy "operario_update_own" on facturas_compra for update to authenticated using (created_by = auth.uid()) with check (created_by = auth.uid());
+drop policy if exists "operario_delete_own" on facturas_compra;
+create policy "operario_delete_own" on facturas_compra for delete to authenticated using (created_by = auth.uid());
+
+alter table factura_compra_lineas enable row level security;
+drop policy if exists "team_full_access" on factura_compra_lineas;
+drop policy if exists "compra_lineas_access" on factura_compra_lineas;
+create policy "compra_lineas_access" on factura_compra_lineas for all to authenticated
+  using (exists (
+    select 1 from facturas_compra fc
+    where fc.id = factura_compra_lineas.factura_compra_id and (is_admin() or fc.created_by = auth.uid())
+  ))
+  with check (exists (
+    select 1 from facturas_compra fc
+    where fc.id = factura_compra_lineas.factura_compra_id and (is_admin() or fc.created_by = auth.uid())
+  ));
+
 -- ---------------------------------------------------------------------------
--- STORAGE: bucket privado para los adjuntos de facturas (PDF/foto)
+-- STORAGE: bucket privado para los adjuntos de facturas (PDF/foto) y otro
+-- para los respaldos semanales (solo lectura para admin).
 -- ---------------------------------------------------------------------------
 insert into storage.buckets (id, name, public)
 values ('documentos', 'documentos', false)
@@ -296,6 +402,15 @@ create policy "eh_team_delete_documentos" on storage.objects
   for delete to authenticated
   using (bucket_id = 'documentos');
 
+insert into storage.buckets (id, name, public)
+values ('respaldos', 'respaldos', false)
+on conflict (id) do nothing;
+
+drop policy if exists "eh_admin_read_respaldos" on storage.objects;
+create policy "eh_admin_read_respaldos" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'respaldos' and is_admin());
+
 -- ---------------------------------------------------------------------------
 -- REALTIME: publicar cambios de todas las tablas para que el equipo vea
 -- las actualizaciones de los demás en vivo (móvil y escritorio a la vez).
@@ -306,7 +421,8 @@ declare
 begin
   for t in select unnest(array[
     'clientes','obras','personal','facturas_venta','facturas_compra',
-    'factura_compra_lineas','entregas_efectivo','abonos','nominas','presupuestos','presupuesto_lineas','incidencias'
+    'factura_compra_lineas','entregas_efectivo','abonos','nominas','presupuestos','presupuesto_lineas',
+    'incidencias','perfiles'
   ])
   loop
     begin

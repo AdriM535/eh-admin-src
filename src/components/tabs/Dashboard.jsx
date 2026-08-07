@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { fmtMoney } from '../../lib/utils.js';
+import { exportGestoriaMensual } from '../../lib/excelExport.js';
 
-export default function Dashboard({ calc, setTab }) {
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+export default function Dashboard({ data, calc, setTab }) {
   const {
     ingresosMes, gastosMes, margenMes, pendienteCobroTotal, pendientePagoTotal,
     cobrosMesPorMetodo, gastosMesPorMetodo, totalEnB, obrasActivas,
@@ -8,12 +12,25 @@ export default function Dashboard({ calc, setTab }) {
     cajaSaldo, cajaPendienteJustificar,
   } = calc;
 
+  const hoy = new Date();
+  const [gYear, setGYear] = useState(hoy.getFullYear());
+  const [gMonth, setGMonth] = useState(hoy.getMonth() + 1);
+
   return (
     <>
       <div className="pagehead">
         <div>
           <h1>Panorama</h1>
           <div className="desc">Estado consolidado — {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select value={gMonth} onChange={(e) => setGMonth(Number(e.target.value))}>
+            {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+          </select>
+          <select value={gYear} onChange={(e) => setGYear(Number(e.target.value))}>
+            {[currentYear, currentYear - 1, currentYear - 2].map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <button className="btn ghost small" onClick={() => exportGestoriaMensual(data, calc, gYear, gMonth)}>⬇ Exportar mes para gestoría</button>
         </div>
       </div>
 
