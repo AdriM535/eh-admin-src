@@ -82,7 +82,7 @@ funciona igual en el ordenador de Sindy que en su móvil — no hace falta
 instalar nada aparte, basta con abrir la URL en el navegador (y se puede
 "Añadir a pantalla de inicio" para que se comporte como una app).
 
-## 6. Envío de presupuestos por correo y respaldo semanal (opcional)
+## 6. Envío de presupuestos por correo y respaldo semanal por correo (opcional)
 
 Estas dos funciones necesitan desplegar dos Edge Functions en Supabase —
 instrucciones completas en [`supabase/functions/README.md`](./supabase/functions/README.md).
@@ -91,14 +91,21 @@ En resumen:
 1. Instala la Supabase CLI, `supabase login` y `supabase link --project-ref TU_REF`.
 2. `supabase functions deploy send-presupuesto-email` y
    `supabase functions deploy weekly-backup`.
-3. Crea una cuenta gratuita en [Resend](https://resend.com) y ejecuta
-   `supabase secrets set RESEND_API_KEY=re_xxxxxxxx`.
+3. Crea una cuenta gratuita en [Resend](https://resend.com) y ejecuta:
+   ```
+   supabase secrets set RESEND_API_KEY=re_xxxxxxxx
+   supabase secrets set BACKUP_EMAIL_TO=tucorreo@ejemplo.com
+   ```
+   Sin verificar un dominio propio en Resend, solo se puede enviar a la
+   dirección con la que te registraste en Resend — usa esa como
+   `BACKUP_EMAIL_TO` mientras no verifiques un dominio.
 4. En el Dashboard: **Edge Functions → weekly-backup → Cron** → añade un
    horario semanal (ej. `0 6 * * 1`, lunes 6:00 UTC).
 
-Mientras no despliegues estas funciones, el botón "Enviar por correo" de
-Presupuestos dará error y la pestaña Respaldos aparecerá vacía — el resto
-de la app funciona igual.
+El Excel semanal se guarda siempre en Storage (pestaña Respaldos), aunque
+no configures el correo. Mientras no despliegues estas funciones, el botón
+"Enviar por correo" de Presupuestos dará error y la pestaña Respaldos
+aparecerá vacía — el resto de la app funciona igual.
 
 ## Qué incluye
 
