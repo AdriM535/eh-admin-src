@@ -12,6 +12,7 @@ export default function FacturasCompra({ data, actions, calc, setModal, docs }) 
     .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
 
   const totalFiltrado = facturas.reduce((s, f) => s + Number(f.total || 0), 0);
+  const facturasCero = facturas.filter((f) => !Number(f.total));
 
   const categoriaLabel = (id) => CATEGORIAS_GENERALES.find((c) => c.id === id)?.label || id;
 
@@ -22,7 +23,14 @@ export default function FacturasCompra({ data, actions, calc, setModal, docs }) 
           <h1>Facturas de compra</h1>
           <div className="desc">Material, autónomos/subcontratas y otros insumos, por obra o generales</div>
         </div>
-        <button className="btn" onClick={() => setModal({ type: 'facturaCompra' })}>+ Nueva factura</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {facturasCero.length > 0 && (
+            <button className="btn danger" onClick={() => actions.deleteFacturasCompraBulk(facturasCero.map((f) => f.id))}>
+              Eliminar {facturasCero.length} con importe 0€
+            </button>
+          )}
+          <button className="btn" onClick={() => setModal({ type: 'facturaCompra' })}>+ Nueva factura</button>
+        </div>
       </div>
       <div className="ledger" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
         <div className="cell warn"><div className="lbl">Gastos (filtro actual)</div><div className="val">{fmtMoney(totalFiltrado)}</div></div>

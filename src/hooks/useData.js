@@ -168,6 +168,17 @@ export function useData(userId) {
     return f;
   };
 
+  // Borra varias facturas de compra de una vez (p.ej. las que quedaron en
+  // 0€ por una importación con la columna de importe mal mapeada), con un
+  // único aviso de confirmación en vez de uno por factura.
+  const deleteFacturasCompraBulk = async (ids) => {
+    if (ids.length === 0) return;
+    if (!window.confirm(`¿Eliminar ${ids.length} factura(s) de compra y sus líneas? Esta acción no se puede deshacer.`)) return;
+    const { error: err } = await supabase.from('facturas_compra').delete().in('id', ids);
+    if (err) throw err;
+    setData((prev) => ({ ...prev, facturasCompra: prev.facturasCompra.filter((x) => !ids.includes(x.id)) }));
+  };
+
   // ---------------- ABONOS ----------------
   const saveAbono = (a) => saveRow('abonos', 'abonos', a);
   const deleteAbono = (id) => deleteRow('abonos', 'abonos', id);
@@ -355,6 +366,7 @@ export function useData(userId) {
       deleteFacturaVenta,
       saveFacturaCompra,
       deleteFacturaCompra,
+      deleteFacturasCompraBulk,
       saveAbono,
       deleteAbono,
       saveNomina,
