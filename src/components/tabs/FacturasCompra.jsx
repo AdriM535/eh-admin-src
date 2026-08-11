@@ -5,6 +5,7 @@ import { CATEGORIAS_GENERALES } from '../../lib/constants.js';
 export default function FacturasCompra({ data, actions, calc, setModal, docs }) {
   const [obraFilter, setObraFilter] = useState('todas');
   const [expanded, setExpanded] = useState(null);
+  const [borrando, setBorrando] = useState(null); // { done, total } | null
 
   const facturas = data.facturasCompra
     .filter((f) => obraFilter === 'todas' || (obraFilter === 'general' ? !f.obraId : f.obraId === obraFilter))
@@ -16,6 +17,17 @@ export default function FacturasCompra({ data, actions, calc, setModal, docs }) 
 
   const categoriaLabel = (id) => CATEGORIAS_GENERALES.find((c) => c.id === id)?.label || id;
 
+  const borrarCero = async () => {
+    setBorrando({ done: 0, total: facturasCero.length });
+    try {
+      await actions.deleteFacturasCompraBulk(facturasCero.map((f) => f.id), (done, total) => setBorrando({ done, total }));
+    } catch (err) {
+      alert('No se pudieron borrar todas: ' + (err.message || err));
+    } finally {
+      setBorrando(null);
+    }
+  };
+
   return (
     <>
       <div className="pagehead">
@@ -25,8 +37,8 @@ export default function FacturasCompra({ data, actions, calc, setModal, docs }) 
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {facturasCero.length > 0 && (
-            <button className="btn danger" onClick={() => actions.deleteFacturasCompraBulk(facturasCero.map((f) => f.id))}>
-              Eliminar {facturasCero.length} con importe 0€
+            <button className="btn danger" disabled={!!borrando} onClick={borrarCero}>
+              {borrando ? `Borrando ${borrando.done}/${borrando.total}…` : `Eliminar ${facturasCero.length} con importe 0€`}
             </button>
           )}
           <button className="btn" onClick={() => setModal({ type: 'facturaCompra' })}>+ Nueva factura</button>

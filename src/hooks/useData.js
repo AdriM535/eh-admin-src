@@ -170,13 +170,23 @@ export function useData(userId) {
 
   // Borra varias facturas de compra de una vez (p.ej. las que quedaron en
   // 0€ por una importación con la columna de importe mal mapeada), con un
-  // único aviso de confirmación en vez de uno por factura.
-  const deleteFacturasCompraBulk = async (ids) => {
+  // único aviso de confirmación en vez de uno por factura. Se manda en
+  // tandas pequeñas: con cientos/miles de ids, una sola petición con todos
+  // los ids de golpe supera el límite de tamaño de la petición y falla sin
+  // avisar.
+  const CHUNK = 150;
+  const deleteFacturasCompraBulk = async (ids, onProgress) => {
     if (ids.length === 0) return;
     if (!window.confirm(`¿Eliminar ${ids.length} factura(s) de compra y sus líneas? Esta acción no se puede deshacer.`)) return;
-    const { error: err } = await supabase.from('facturas_compra').delete().in('id', ids);
-    if (err) throw err;
-    setData((prev) => ({ ...prev, facturasCompra: prev.facturasCompra.filter((x) => !ids.includes(x.id)) }));
+    const borrados = [];
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const tanda = ids.slice(i, i + CHUNK);
+      const { error: err } = await supabase.from('facturas_compra').delete().in('id', tanda);
+      if (err) throw err;
+      borrados.push(...tanda);
+      setData((prev) => ({ ...prev, facturasCompra: prev.facturasCompra.filter((x) => !borrados.includes(x.id)) }));
+      if (onProgress) onProgress(borrados.length, ids.length);
+    }
   };
 
   // ---------------- ABONOS ----------------
