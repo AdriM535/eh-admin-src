@@ -97,6 +97,7 @@ export const IMPORT_SPECS = {
     montoKey: 'total', // campo que debe traer el importe real — se avisa si queda vacío o en 0
     fields: [
       { key: 'clienteNombre', label: 'Cliente', candidates: ['nombre destinatario', 'cliente', 'destinatario'] },
+      { key: 'clienteNif', label: 'DNI/NIE/NIF del cliente', candidates: ['dni', 'nie', 'nif', 'cif', 'identificacion'] },
       { key: 'obraNombre', label: 'Obra', candidates: ['proyecto / obra', 'obra', 'proyecto'] },
       { key: 'serie', label: 'Serie', candidates: ['serie'] },
       { key: 'numero', label: 'Número', candidates: ['numero', 'número', 'nº'] },

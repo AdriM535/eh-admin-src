@@ -12,7 +12,19 @@ const direccionCompleta = (c) => {
 
 export default function Clientes({ data, actions, calc, setModal }) {
   const [search, setSearch] = useState('');
+  const [borrando, setBorrando] = useState(null); // { done, total } | null
   const clientes = data.clientes.filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()));
+
+  const borrarTodos = async () => {
+    setBorrando({ done: 0, total: clientes.length });
+    try {
+      await actions.deleteClientesBulk(clientes.map((c) => c.id), (done, total) => setBorrando({ done, total }));
+    } catch (err) {
+      alert('No se pudieron borrar todos: ' + (err.message || err));
+    } finally {
+      setBorrando(null);
+    }
+  };
 
   return (
     <>
@@ -21,7 +33,14 @@ export default function Clientes({ data, actions, calc, setModal }) {
           <h1>Clientes</h1>
           <div className="desc">Cartera de clientes de Estructuras Humanizadoras</div>
         </div>
-        <button className="btn" onClick={() => setModal({ type: 'cliente' })}>+ Nuevo cliente</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {clientes.length > 0 && (
+            <button className="btn danger" disabled={!!borrando} onClick={borrarTodos}>
+              {borrando ? `Borrando ${borrando.done}/${borrando.total}…` : `Eliminar ${clientes.length}${search ? ' (filtro)' : ' todos'}`}
+            </button>
+          )}
+          <button className="btn" onClick={() => setModal({ type: 'cliente' })}>+ Nuevo cliente</button>
+        </div>
       </div>
       <div className="toolbar">
         <div className="filters">

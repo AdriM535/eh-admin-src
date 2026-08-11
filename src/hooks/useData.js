@@ -103,11 +103,33 @@ export function useData(userId) {
 
   const saveRow = (table, key, obj) => (obj.id ? updateRow(table, key, obj.id, obj) : insertRow(table, key, obj));
 
+  // Borra muchas filas de una tabla de una vez, en tandas pequeñas (con
+  // cientos/miles de ids, mandarlos todos en una sola petición supera el
+  // límite de tamaño y falla sin avisar).
+  const BULK_CHUNK = 150;
+  const deleteRowsBulk = async (table, key, ids, onProgress) => {
+    if (ids.length === 0) return;
+    const borrados = [];
+    for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+      const tanda = ids.slice(i, i + BULK_CHUNK);
+      const { error: err } = await supabase.from(table).delete().in('id', tanda);
+      if (err) throw err;
+      borrados.push(...tanda);
+      setData((prev) => ({ ...prev, [key]: prev[key].filter((x) => !borrados.includes(x.id)) }));
+      if (onProgress) onProgress(borrados.length, ids.length);
+    }
+  };
+
   // ---------------- CLIENTES ----------------
   const saveCliente = (c) => saveRow('clientes', 'clientes', c);
   const deleteCliente = (id) => {
     if (!window.confirm('¿Eliminar este cliente? Las obras y facturas asociadas no se borran automáticamente.')) return;
     return deleteRow('clientes', 'clientes', id);
+  };
+  const deleteClientesBulk = (ids, onProgress) => {
+    if (ids.length === 0) return;
+    if (!window.confirm(`¿Eliminar ${ids.length} cliente(s)? Las obras y facturas asociadas no se borran, solo quedan sin cliente vinculado. Esta acción no se puede deshacer.`)) return;
+    return deleteRowsBulk('clientes', 'clientes', ids, onProgress);
   };
 
   // ---------------- OBRAS ----------------
@@ -115,6 +137,11 @@ export function useData(userId) {
   const deleteObra = (id) => {
     if (!window.confirm('¿Eliminar esta obra? Las facturas, abonos e incidencias asociadas quedarán sin obra vinculada.')) return;
     return deleteRow('obras', 'obras', id);
+  };
+  const deleteObrasBulk = (ids, onProgress) => {
+    if (ids.length === 0) return;
+    if (!window.confirm(`¿Eliminar ${ids.length} obra(s)? Las facturas, abonos e incidencias asociadas no se borran, solo quedan sin obra vinculada. Esta acción no se puede deshacer.`)) return;
+    return deleteRowsBulk('obras', 'obras', ids, onProgress);
   };
 
   // ---------------- PERSONAL ----------------
@@ -170,23 +197,11 @@ export function useData(userId) {
 
   // Borra varias facturas de compra de una vez (p.ej. las que quedaron en
   // 0€ por una importación con la columna de importe mal mapeada), con un
-  // único aviso de confirmación en vez de uno por factura. Se manda en
-  // tandas pequeñas: con cientos/miles de ids, una sola petición con todos
-  // los ids de golpe supera el límite de tamaño de la petición y falla sin
-  // avisar.
-  const CHUNK = 150;
-  const deleteFacturasCompraBulk = async (ids, onProgress) => {
+  // único aviso de confirmación en vez de uno por factura.
+  const deleteFacturasCompraBulk = (ids, onProgress) => {
     if (ids.length === 0) return;
     if (!window.confirm(`¿Eliminar ${ids.length} factura(s) de compra y sus líneas? Esta acción no se puede deshacer.`)) return;
-    const borrados = [];
-    for (let i = 0; i < ids.length; i += CHUNK) {
-      const tanda = ids.slice(i, i + CHUNK);
-      const { error: err } = await supabase.from('facturas_compra').delete().in('id', tanda);
-      if (err) throw err;
-      borrados.push(...tanda);
-      setData((prev) => ({ ...prev, facturasCompra: prev.facturasCompra.filter((x) => !borrados.includes(x.id)) }));
-      if (onProgress) onProgress(borrados.length, ids.length);
-    }
+    return deleteRowsBulk('facturas_compra', 'facturasCompra', ids, onProgress);
   };
 
   // ---------------- ABONOS ----------------
@@ -265,7 +280,7 @@ export function useData(userId) {
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       try {
-        const clienteId = await findOrCreateByName('clientes', 'clientes', clientesCache, r.clienteNombre);
+        const clienteId = await findOrCreateByName('clientes', 'clientes', clientesCache, r.clienteNombre, r.clienteNif ? { nif: r.clienteNif } : {});
         const obraId = await findOrCreateByName('obras', 'obras', obrasCache, r.obraNombre, clienteId ? { clienteId, estado: 'activa' } : { estado: 'activa' });
         await insertRow('facturas_venta', 'facturasVenta', {
           obraId, clienteId, serie: r.serie || '', numero: r.numero || '',
@@ -368,8 +383,10 @@ export function useData(userId) {
     actions: {
       saveCliente,
       deleteCliente,
+      deleteClientesBulk,
       saveObra,
       deleteObra,
+      deleteObrasBulk,
       savePersonal,
       deletePersonal,
       saveFacturaVenta,

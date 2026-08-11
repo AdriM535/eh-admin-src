@@ -6,6 +6,7 @@ export default function Obras({ data, actions, calc, setModal }) {
   const [estadoFilter, setEstadoFilter] = useState('todas');
   const [ciudadFilter, setCiudadFilter] = useState('todas');
   const [expanded, setExpanded] = useState(null);
+  const [borrando, setBorrando] = useState(null); // { done, total } | null
 
   const ciudades = useMemo(
     () => Array.from(new Set(data.obras.map((o) => (o.ciudad || '').trim()).filter(Boolean))).sort(),
@@ -23,6 +24,17 @@ export default function Obras({ data, actions, calc, setModal }) {
     return <span className={'pill ' + (map[estado] || '')}>{ESTADOS_OBRA.find((e) => e.id === estado)?.label || estado}</span>;
   };
 
+  const borrarTodas = async () => {
+    setBorrando({ done: 0, total: obras.length });
+    try {
+      await actions.deleteObrasBulk(obras.map((o) => o.id), (done, total) => setBorrando({ done, total }));
+    } catch (err) {
+      alert('No se pudieron borrar todas: ' + (err.message || err));
+    } finally {
+      setBorrando(null);
+    }
+  };
+
   return (
     <>
       <div className="pagehead">
@@ -30,7 +42,14 @@ export default function Obras({ data, actions, calc, setModal }) {
           <h1>Obras</h1>
           <div className="desc">Proyectos y servicios entregados a clientes</div>
         </div>
-        <button className="btn" onClick={() => setModal({ type: 'obra' })}>+ Nueva obra</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {obras.length > 0 && (
+            <button className="btn danger" disabled={!!borrando} onClick={borrarTodas}>
+              {borrando ? `Borrando ${borrando.done}/${borrando.total}…` : `Eliminar ${obras.length}${estadoFilter !== 'todas' || ciudadFilter !== 'todas' ? ' (filtro)' : ' todas'}`}
+            </button>
+          )}
+          <button className="btn" onClick={() => setModal({ type: 'obra' })}>+ Nueva obra</button>
+        </div>
       </div>
       <div className="toolbar">
         <div className="filters">
