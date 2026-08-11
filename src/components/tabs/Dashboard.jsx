@@ -54,8 +54,8 @@ export default function Dashboard({ data, calc, setTab }) {
       <div className="section-title">Panorama anual {currentYear}</div>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: '18px 18px 8px' }}>
         <div style={{ display: 'flex', gap: 14, fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 16, flexWrap: 'wrap' }}>
-          <span><b style={{ color: 'var(--accent-dark)' }}>■</b> Facturado: {fmtMoney(anualIngresos)}</span>
-          <span><b style={{ color: 'var(--brick)' }}>■</b> Gastos: {fmtMoney(anualGastos)}</span>
+          <span><b style={{ color: 'var(--accent)' }}>■</b> Facturado: {fmtMoney(anualIngresos)}</span>
+          <span><b style={{ color: 'var(--steel)' }}>■</b> Gastos: {fmtMoney(anualGastos)}</span>
           <span>Margen anual: <b>{fmtMoney(anualIngresos - anualGastos)}</b></span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140, overflowX: 'auto' }}>
@@ -63,7 +63,7 @@ export default function Dashboard({ data, calc, setTab }) {
             <div key={m.mk} style={{ flex: 1, minWidth: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 110 }}>
                 <div title={`Facturado ${m.label}: ${fmtMoney(m.ingresos)}`} style={{ width: 9, borderRadius: '2px 2px 0 0', background: 'var(--accent)', height: `${Math.max(2, (m.ingresos / anualMax) * 100)}%` }}></div>
-                <div title={`Gastos ${m.label}: ${fmtMoney(m.gastos)}`} style={{ width: 9, borderRadius: '2px 2px 0 0', background: 'var(--brick)', height: `${Math.max(2, (m.gastos / anualMax) * 100)}%` }}></div>
+                <div title={`Gastos ${m.label}: ${fmtMoney(m.gastos)}`} style={{ width: 9, borderRadius: '2px 2px 0 0', background: 'var(--steel)', height: `${Math.max(2, (m.gastos / anualMax) * 100)}%` }}></div>
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', marginTop: 6, fontWeight: 600 }}>{m.label}</div>
             </div>
