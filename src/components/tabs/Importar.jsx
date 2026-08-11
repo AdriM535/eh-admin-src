@@ -5,12 +5,16 @@ const TIPOS = [
   { id: 'ventas', label: 'Facturas de venta', desc: 'Ingresos facturados a clientes.' },
   { id: 'compras', label: 'Facturas de compra', desc: 'Material, autónomos/subcontratas, vehículo…' },
   { id: 'nominas', label: 'Nóminas', desc: 'Liquidaciones del personal empleado.' },
+  { id: 'clientes', label: 'Clientes', desc: 'Cartera de clientes: nombre, DNI/NIE, contacto y dirección.' },
+  { id: 'obras', label: 'Obras', desc: 'Proyectos/servicios, vinculados a un cliente.' },
 ];
 
 const IMPORT_ACTIONS = {
   ventas: 'importFacturasVenta',
   compras: 'importFacturasCompra',
   nominas: 'importNominas',
+  clientes: 'importClientes',
+  obras: 'importObras',
 };
 
 export default function Importar({ actions }) {

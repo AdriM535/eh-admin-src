@@ -376,6 +376,57 @@ export function useData(userId) {
     return { ok, fail, errors };
   };
 
+  const ESTADOS_OBRA_VALIDOS = new Set(['presupuesto', 'activa', 'finalizada', 'cancelada']);
+
+  const importClientes = async (rows, onProgress) => {
+    let ok = 0;
+    let fail = 0;
+    const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      try {
+        if (!r.nombre) throw new Error('Falta el nombre del cliente');
+        await insertRow('clientes', 'clientes', {
+          nombre: r.nombre, nif: r.nif || '', telefono: r.telefono || '', email: r.email || '',
+          calle: r.calle || '', numero: r.numero || '', interior: r.interior || '',
+          municipio: r.municipio || '', provincia: r.provincia || '', cp: r.cp || '', notas: r.notas || '',
+        });
+        ok++;
+      } catch (err) {
+        fail++;
+        errors.push(`Fila ${i + 2}: ${err.message || err}`);
+      }
+      if (onProgress) onProgress(i + 1, rows.length);
+    }
+    return { ok, fail, errors };
+  };
+
+  const importObras = async (rows, onProgress) => {
+    const clientesCache = dataRef.current.clientes.slice();
+    let ok = 0;
+    let fail = 0;
+    const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      try {
+        if (!r.nombre) throw new Error('Falta el nombre de la obra');
+        const clienteId = await findOrCreateByName('clientes', 'clientes', clientesCache, r.clienteNombre);
+        const estadoNorm = (r.estado || '').toString().trim().toLowerCase();
+        await insertRow('obras', 'obras', {
+          nombre: r.nombre, clienteId, direccion: r.direccion || '', ciudad: r.ciudad || '',
+          estado: ESTADOS_OBRA_VALIDOS.has(estadoNorm) ? estadoNorm : 'activa',
+          fechaInicio: r.fechaInicio || null, fechaFin: r.fechaFin || null, notas: r.notas || '',
+        });
+        ok++;
+      } catch (err) {
+        fail++;
+        errors.push(`Fila ${i + 2}: ${err.message || err}`);
+      }
+      if (onProgress) onProgress(i + 1, rows.length);
+    }
+    return { ok, fail, errors };
+  };
+
   return {
     data,
     loading,
@@ -407,6 +458,8 @@ export function useData(userId) {
       importFacturasVenta,
       importFacturasCompra,
       importNominas,
+      importClientes,
+      importObras,
     },
   };
 }

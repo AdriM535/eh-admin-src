@@ -154,6 +154,35 @@ export const IMPORT_SPECS = {
       { key: 'notas', label: 'Notas', candidates: ['notas'] },
     ],
   },
+  clientes: {
+    label: 'Clientes',
+    fields: [
+      { key: 'nombre', label: 'Nombre', candidates: ['nombre destinatario', 'nombre', 'cliente', 'razon social'] },
+      { key: 'nif', label: 'DNI/NIE/NIF', candidates: ['dni', 'nie', 'nif', 'cif', 'identificacion'] },
+      { key: 'telefono', label: 'Teléfono', candidates: ['telefono', 'movil'] },
+      { key: 'email', label: 'Email', candidates: ['email', 'correo'] },
+      { key: 'calle', label: 'Calle', candidates: ['calle', 'direccion'] },
+      { key: 'numero', label: 'Número', candidates: ['numero', 'número'] },
+      { key: 'interior', label: 'Piso / interior', candidates: ['interior', 'piso'] },
+      { key: 'municipio', label: 'Municipio', candidates: ['municipio', 'ciudad', 'poblacion'] },
+      { key: 'provincia', label: 'Provincia', candidates: ['provincia'] },
+      { key: 'cp', label: 'Código postal', candidates: ['cp', 'codigo postal'] },
+      { key: 'notas', label: 'Notas', candidates: ['notas', 'observaciones'] },
+    ],
+  },
+  obras: {
+    label: 'Obras',
+    fields: [
+      { key: 'nombre', label: 'Nombre de la obra', candidates: ['obra', 'proyecto / obra', 'proyecto', 'nombre'] },
+      { key: 'clienteNombre', label: 'Cliente', candidates: ['cliente', 'nombre destinatario'] },
+      { key: 'direccion', label: 'Dirección', candidates: ['direccion'] },
+      { key: 'ciudad', label: 'Ciudad', candidates: ['ciudad', 'municipio', 'poblacion'] },
+      { key: 'estado', label: 'Estado', candidates: ['estado'] },
+      { key: 'fechaInicio', label: 'Fecha inicio', type: 'date', candidates: ['fecha inicio', 'inicio'] },
+      { key: 'fechaFin', label: 'Fecha fin', type: 'date', candidates: ['fecha fin', 'fin'] },
+      { key: 'notas', label: 'Notas', candidates: ['notas', 'observaciones'] },
+    ],
+  },
 };
 
 // Agrupa filas de producto (una por línea del Excel de compras) en facturas
