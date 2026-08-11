@@ -15,6 +15,7 @@ const emptyData = () => ({
   presupuestos: [],
   presupuestoLineas: [],
   incidencias: [],
+  servicios: [],
 });
 
 // key en `data` -> tabla en Supabase
@@ -31,6 +32,7 @@ const TABLES = {
   presupuestos: 'presupuestos',
   presupuestoLineas: 'presupuesto_lineas',
   incidencias: 'incidencias',
+  servicios: 'servicios',
 };
 
 export function useData(userId) {
@@ -248,6 +250,52 @@ export function useData(userId) {
   const saveIncidencia = (i) => saveRow('incidencias', 'incidencias', i);
   const deleteIncidencia = (id) => deleteRow('incidencias', 'incidencias', id);
 
+  // ---------------- CATÁLOGO DE SERVICIOS ----------------
+  const saveServicio = (s) => saveRow('servicios', 'servicios', s);
+  const deleteServicio = (id) => {
+    if (!window.confirm('¿Eliminar este servicio del catálogo? Los presupuestos que ya lo usan no se modifican.')) return;
+    return deleteRow('servicios', 'servicios', id);
+  };
+  // Importar/actualizar el catálogo desde Excel: si el nombre ya existe (sin
+  // distinguir mayúsculas), actualiza su precio/descripción; si no, lo crea.
+  // Así se puede volver a subir el mismo archivo con precios nuevos sin
+  // duplicar servicios.
+  const importServicios = async (rows, onProgress) => {
+    const cache = dataRef.current.servicios.slice();
+    let ok = 0;
+    let fail = 0;
+    let creados = 0;
+    let actualizados = 0;
+    const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      try {
+        if (!r.nombre) throw new Error('Falta el nombre del servicio');
+        const payload = {
+          nombre: r.nombre, descripcion: r.descripcion || '', unidad: r.unidad || '',
+          precioUnitario: r.precioUnitario || 0, categoria: r.categoria || '',
+        };
+        const existing = cache.find((x) => (x.nombre || '').trim().toLowerCase() === r.nombre.trim().toLowerCase());
+        if (existing) {
+          const updated = await updateRow('servicios', 'servicios', existing.id, payload);
+          const idx = cache.findIndex((x) => x.id === existing.id);
+          cache[idx] = updated;
+          actualizados++;
+        } else {
+          const created = await insertRow('servicios', 'servicios', payload);
+          cache.push(created);
+          creados++;
+        }
+        ok++;
+      } catch (err) {
+        fail++;
+        errors.push(`Fila ${i + 2}: ${err.message || err}`);
+      }
+      if (onProgress) onProgress(i + 1, rows.length);
+    }
+    return { ok, fail, errors, creados, actualizados };
+  };
+
   // ---------------- CAJA: ENTREGAS DE EFECTIVO A PERSONAL ----------------
   const saveEntregaEfectivo = (e) => saveRow('entregas_efectivo', 'entregasEfectivo', e);
   const deleteEntregaEfectivo = (id) => {
@@ -453,6 +501,9 @@ export function useData(userId) {
       deletePresupuesto,
       saveIncidencia,
       deleteIncidencia,
+      saveServicio,
+      deleteServicio,
+      importServicios,
       saveEntregaEfectivo,
       deleteEntregaEfectivo,
       importFacturasVenta,

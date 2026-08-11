@@ -183,6 +183,17 @@ export const IMPORT_SPECS = {
       { key: 'notas', label: 'Notas', candidates: ['notas', 'observaciones'] },
     ],
   },
+  servicios: {
+    label: 'Catálogo de servicios',
+    montoKey: 'precioUnitario',
+    fields: [
+      { key: 'nombre', label: 'Nombre del servicio', candidates: ['nombre', 'servicio', 'concepto'] },
+      { key: 'descripcion', label: 'Descripción', candidates: ['descripcion', 'detalle'] },
+      { key: 'unidad', label: 'Unidad (m2, hora, ud…)', candidates: ['unidad', 'ud'] },
+      { key: 'precioUnitario', label: 'Precio unidad', type: 'number', candidates: ['precio unidad', 'precio unitario', 'precio', 'importe'] },
+      { key: 'categoria', label: 'Categoría', candidates: ['categoria'] },
+    ],
+  },
 };
 
 // Agrupa filas de producto (una por línea del Excel de compras) en facturas

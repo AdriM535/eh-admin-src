@@ -235,6 +235,21 @@ create table if not exists presupuesto_lineas (
 create index if not exists presupuesto_lineas_presupuesto_id_idx on presupuesto_lineas(presupuesto_id);
 
 -- ---------------------------------------------------------------------------
+-- CATÁLOGO DE SERVICIOS (para elegir al crear un presupuesto)
+-- ---------------------------------------------------------------------------
+create table if not exists servicios (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  descripcion text,
+  unidad text,                                    -- ej. m2, hora, ud
+  precio_unitario numeric not null default 0,
+  categoria text,
+  activo boolean not null default true,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
 -- INCIDENCIAS (daños por no seguir protocolo: fotos, medidas, tiempos...)
 -- ---------------------------------------------------------------------------
 create table if not exists incidencias (
@@ -317,7 +332,7 @@ declare
 begin
   for t in select unnest(array[
     'clientes','facturas_venta','abonos','nominas','presupuestos','presupuesto_lineas',
-    'incidencias','respaldos_semanales'
+    'incidencias','respaldos_semanales','servicios'
   ])
   loop
     execute format('alter table %I enable row level security;', t);
@@ -422,7 +437,7 @@ begin
   for t in select unnest(array[
     'clientes','obras','personal','facturas_venta','facturas_compra',
     'factura_compra_lineas','entregas_efectivo','abonos','nominas','presupuestos','presupuesto_lineas',
-    'incidencias','perfiles'
+    'incidencias','perfiles','servicios'
   ])
   loop
     begin

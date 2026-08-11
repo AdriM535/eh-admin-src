@@ -7,6 +7,7 @@ const TIPOS = [
   { id: 'nominas', label: 'Nóminas', desc: 'Liquidaciones del personal empleado.' },
   { id: 'clientes', label: 'Clientes', desc: 'Cartera de clientes: nombre, DNI/NIE, contacto y dirección.' },
   { id: 'obras', label: 'Obras', desc: 'Proyectos/servicios, vinculados a un cliente.' },
+  { id: 'servicios', label: 'Catálogo de servicios', desc: 'Servicios para elegir al armar un presupuesto. Si un nombre ya existe, actualiza su precio en vez de duplicarlo.' },
 ];
 
 const IMPORT_ACTIONS = {
@@ -15,6 +16,7 @@ const IMPORT_ACTIONS = {
   nominas: 'importNominas',
   clientes: 'importClientes',
   obras: 'importObras',
+  servicios: 'importServicios',
 };
 
 export default function Importar({ actions }) {
@@ -240,6 +242,12 @@ export default function Importar({ actions }) {
             <div className="cell ok"><div className="lbl">Importadas correctamente</div><div className="val">{result.ok}</div></div>
             <div className={'cell' + (result.fail > 0 ? ' warn' : '')}><div className="lbl">Con error</div><div className="val">{result.fail}</div></div>
           </div>
+          {(result.creados != null || result.actualizados != null) && (
+            <div className="ledger" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginTop: -18 }}>
+              <div className="cell"><div className="lbl">Nuevos</div><div className="val">{result.creados}</div></div>
+              <div className="cell"><div className="lbl">Actualizados (ya existían)</div><div className="val">{result.actualizados}</div></div>
+            </div>
+          )}
           {result.errors.length > 0 && (
             <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--ink-soft)', maxHeight: 200, overflowY: 'auto' }}>
               {result.errors.slice(0, 30).map((e, i) => <div key={i}>{e}</div>)}

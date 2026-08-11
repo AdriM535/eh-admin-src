@@ -24,6 +24,7 @@ import Nominas from './components/tabs/Nominas.jsx';
 import Incidencias from './components/tabs/Incidencias.jsx';
 import Importar from './components/tabs/Importar.jsx';
 import Caja from './components/tabs/Caja.jsx';
+import Servicios from './components/tabs/Servicios.jsx';
 
 import ObraForm from './components/forms/ObraForm.jsx';
 import ClienteForm from './components/forms/ClienteForm.jsx';
@@ -35,6 +36,7 @@ import PersonalForm from './components/forms/PersonalForm.jsx';
 import NominaForm from './components/forms/NominaForm.jsx';
 import IncidenciaForm from './components/forms/IncidenciaForm.jsx';
 import EntregaEfectivoForm from './components/forms/EntregaEfectivoForm.jsx';
+import ServicioForm from './components/forms/ServicioForm.jsx';
 
 export default function App() {
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
@@ -88,6 +90,7 @@ function Operacion({ user, onSignOut }) {
         {tab === 'incidencias' && <Incidencias {...tabProps} />}
         {tab === 'importar' && <Importar {...tabProps} />}
         {tab === 'caja' && <Caja {...tabProps} />}
+        {tab === 'servicios' && <Servicios {...tabProps} />}
         {tab === 'usuarios' && <Usuarios {...tabProps} />}
         {tab === 'respaldos' && <Respaldos {...tabProps} />}
       </main>
@@ -111,12 +114,21 @@ function Operacion({ user, onSignOut }) {
       )}
       {modal?.type === 'abono' && <AbonoForm initial={modal.initial} obras={data.obras} clientes={data.clientes} onSave={wrap(actions.saveAbono)} onClose={() => setModal(null)} />}
       {modal?.type === 'presupuesto' && (
-        <PresupuestoForm initial={modal.initial} obras={data.obras} clientes={data.clientes} presupuestoLineas={data.presupuestoLineas} onSave={wrap(actions.savePresupuesto)} onClose={() => setModal(null)} />
+        <PresupuestoForm
+          initial={modal.initial}
+          obras={data.obras}
+          clientes={data.clientes}
+          servicios={data.servicios}
+          presupuestoLineas={data.presupuestoLineas}
+          onSave={wrap(actions.savePresupuesto)}
+          onClose={() => setModal(null)}
+        />
       )}
       {modal?.type === 'personal' && <PersonalForm initial={modal.initial} onSave={wrap(actions.savePersonal)} onClose={() => setModal(null)} />}
       {modal?.type === 'nomina' && <NominaForm initial={modal.initial} personal={data.personal} onSave={wrap(actions.saveNomina)} onClose={() => setModal(null)} />}
       {modal?.type === 'incidencia' && <IncidenciaForm initial={modal.initial} obras={data.obras} personal={data.personal} onSave={wrap(actions.saveIncidencia)} onClose={() => setModal(null)} />}
       {modal?.type === 'entregaEfectivo' && <EntregaEfectivoForm initial={modal.initial} personal={data.personal} onSave={wrap(actions.saveEntregaEfectivo)} onClose={() => setModal(null)} />}
+      {modal?.type === 'servicio' && <ServicioForm initial={modal.initial} onSave={wrap(actions.saveServicio)} onClose={() => setModal(null)} />}
     </div>
   );
 }

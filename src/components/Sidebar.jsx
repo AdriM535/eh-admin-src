@@ -7,12 +7,13 @@ const NAV_ITEMS = [
   { id: 'abonos', label: 'Abonos y anticipos', n: '05' },
   { id: 'caja', label: 'Caja', n: '06' },
   { id: 'presupuestos', label: 'Presupuestos', n: '07' },
-  { id: 'personal', label: 'Personal', n: '08' },
-  { id: 'nominas', label: 'Nóminas', n: '09' },
-  { id: 'incidencias', label: 'Incidencias', n: '10' },
-  { id: 'importar', label: 'Importar Excel', n: '11' },
-  { id: 'usuarios', label: 'Usuarios', n: '12' },
-  { id: 'respaldos', label: 'Respaldos', n: '13' },
+  { id: 'servicios', label: 'Catálogo de servicios', n: '08' },
+  { id: 'personal', label: 'Personal', n: '09' },
+  { id: 'nominas', label: 'Nóminas', n: '10' },
+  { id: 'incidencias', label: 'Incidencias', n: '11' },
+  { id: 'importar', label: 'Importar Excel', n: '12' },
+  { id: 'usuarios', label: 'Usuarios', n: '13' },
+  { id: 'respaldos', label: 'Respaldos', n: '14' },
 ];
 
 export default function Sidebar({ tab, setTab, data, onExport, userEmail, onSignOut }) {

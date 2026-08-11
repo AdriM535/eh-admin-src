@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import Modal from '../common/Modal.jsx';
 import Field from '../common/Field.jsx';
-import { todayISO } from '../../lib/utils.js';
+import { todayISO, fmtMoney } from '../../lib/utils.js';
 import { ESTADOS_PRESUPUESTO } from '../../lib/constants.js';
 
 const emptyLinea = () => ({ concepto: '', cantidad: 1, precioUnitario: '', importe: 0 });
 
-export default function PresupuestoForm({ initial, obras, clientes, presupuestoLineas, onSave, onClose }) {
+export default function PresupuestoForm({ initial, obras, clientes, servicios, presupuestoLineas, onSave, onClose }) {
   const initialLineas = initial ? presupuestoLineas.filter((l) => l.presupuestoId === initial.id).sort((a, b) => a.orden - b.orden) : [];
   const [f, setF] = useState(
     initial || { clienteId: clientes[0]?.id || '', obraId: '', numero: '', fecha: todayISO(), validezDias: 30, estado: 'borrador', notas: '' }
@@ -27,7 +27,14 @@ export default function PresupuestoForm({ initial, obras, clientes, presupuestoL
   };
   const addLinea = () => setLineas((prev) => [...prev, emptyLinea()]);
   const removeLinea = (idx) => setLineas((prev) => prev.filter((_, i) => i !== idx));
+  const addLineaDesdeServicio = (servicioId) => {
+    const s = (servicios || []).find((x) => x.id === servicioId);
+    if (!s) return;
+    const precio = Number(s.precioUnitario) || 0;
+    setLineas((prev) => [...prev, { concepto: s.nombre, cantidad: 1, precioUnitario: precio, importe: precio }]);
+  };
   const total = lineas.reduce((s, l) => s + (Number(l.importe) || 0), 0);
+  const serviciosActivos = (servicios || []).filter((s) => s.activo !== false);
 
   return (
     <Modal title={initial && initial.id ? 'Editar presupuesto' : 'Nuevo presupuesto'} wide onClose={onClose}>
@@ -69,7 +76,19 @@ export default function PresupuestoForm({ initial, obras, clientes, presupuestoL
             </div>
           ))}
         </div>
-        <button className="btn ghost small" type="button" onClick={addLinea}>+ Añadir línea</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button className="btn ghost small" type="button" onClick={addLinea}>+ Añadir línea</button>
+          {serviciosActivos.length > 0 && (
+            <select
+              value=""
+              onChange={(e) => { if (e.target.value) addLineaDesdeServicio(e.target.value); }}
+              style={{ maxWidth: 280 }}
+            >
+              <option value="">+ Añadir del catálogo de servicios…</option>
+              {serviciosActivos.map((s) => <option key={s.id} value={s.id}>{s.nombre} — {fmtMoney(s.precioUnitario)}</option>)}
+            </select>
+          )}
+        </div>
       </Field>
 
       <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, margin: '10px 0' }}>Total: {total.toFixed(2)} €</div>
