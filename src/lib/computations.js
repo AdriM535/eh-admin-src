@@ -1,10 +1,8 @@
-import { todayISO } from './utils.js';
 import { MES_CORTO } from './constants.js';
 
 // Todos los valores derivados de `data` que se reutilizan entre pestañas.
 // Se recalcula en cada render (el volumen de datos de esta app es pequeño).
 export function computeAll(data) {
-  const thisMonth = todayISO().slice(0, 7);
   const currentYear = new Date().getFullYear();
 
   const clienteById = (id) => data.clientes.find((c) => c.id === id);
@@ -42,21 +40,11 @@ export function computeAll(data) {
 
   const obrasConStats = data.obras.map((o) => ({ ...o, stats: obraStats(o.id) }));
 
-  // ---------------- panorama del mes ----------------
-  const ventasMes = data.facturasVenta.filter((f) => (f.fechaExpedicion || '').slice(0, 7) === thisMonth);
-  const comprasMes = data.facturasCompra.filter((f) => (f.fecha || '').slice(0, 7) === thisMonth);
-  const nominasMes = data.nominas.filter((n) => (n.fechaPago || n.periodoFin || '').slice(0, 7) === thisMonth);
-
-  const ingresosMes = sum(ventasMes, (f) => f.total);
-  const gastosMesCompras = sum(comprasMes, (f) => f.total);
-  const gastosMesNominas = sum(nominasMes, (n) => n.total);
-  const gastosMes = gastosMesCompras + gastosMesNominas;
-  const margenMes = ingresosMes - gastosMes;
-
   const pendienteCobroTotal = sum(data.facturasVenta.filter((f) => !f.cobrado), (f) => f.total);
   const pendientePagoTotal = sum(data.facturasCompra.filter((f) => !f.pagado), (f) => f.total);
+  const totalEnB = sum(data.facturasVenta.filter((f) => f.enB), (f) => f.total) + sum(data.abonos.filter((a) => a.enB), (a) => a.importe);
 
-  // desglose por método de pago/cobro del mes (efectivo / tarjeta / transferencia / cuenta)
+  // desglose por método de pago/cobro (efectivo / tarjeta / transferencia / cuenta)
   const desgloseMetodo = (arr, campo) => {
     const acc = {};
     arr.forEach((x) => {
@@ -65,22 +53,48 @@ export function computeAll(data) {
     });
     return acc;
   };
-  const cobrosMesPorMetodo = desgloseMetodo(ventasMes, 'metodoCobro');
-  const gastosMesPorMetodo = desgloseMetodo(comprasMes, 'metodoPago');
 
-  const totalEnB = sum(data.facturasVenta.filter((f) => f.enB), (f) => f.total) + sum(data.abonos.filter((a) => a.enB), (a) => a.importe);
+  // Fecha "de alta" de una obra: se usa la de inicio si la rellenaron, si no
+  // la de creación del registro — para poder contar cuántas obras nuevas
+  // arrancaron en un mes/año concreto.
+  const fechaAltaObra = (o) => (o.fechaInicio || o.createdAt || '').slice(0, 7);
 
-  // ---------------- panorama anual ----------------
-  const panoramaAnual = MES_CORTO.map((label, idx) => {
-    const mk = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
-    const ing = sum(data.facturasVenta.filter((f) => (f.fechaExpedicion || '').slice(0, 7) === mk), (f) => f.total);
-    const gasCompras = sum(data.facturasCompra.filter((f) => (f.fecha || '').slice(0, 7) === mk), (f) => f.total);
-    const gasNominas = sum(data.nominas.filter((n) => (n.fechaPago || n.periodoFin || '').slice(0, 7) === mk), (n) => n.total);
-    return { label, mk, ingresos: ing, gastos: gasCompras + gasNominas, saldo: ing - gasCompras - gasNominas };
-  });
-  const anualIngresos = panoramaAnual.reduce((s, m) => s + m.ingresos, 0);
-  const anualGastos = panoramaAnual.reduce((s, m) => s + m.gastos, 0);
-  const anualMax = Math.max(1, ...panoramaAnual.map((m) => Math.max(m.ingresos, m.gastos)));
+  // ---------------- panorama de un mes concreto (YYYY-MM) ----------------
+  // Parametrizado para que el Panorama deje elegir cualquier mes/año, no
+  // solo el actual.
+  const statsForMonth = (ym) => {
+    const ventasMes = data.facturasVenta.filter((f) => (f.fechaExpedicion || '').slice(0, 7) === ym);
+    const comprasMes = data.facturasCompra.filter((f) => (f.fecha || '').slice(0, 7) === ym);
+    const nominasMes = data.nominas.filter((n) => (n.fechaPago || n.periodoFin || '').slice(0, 7) === ym);
+    const obrasNuevasMes = data.obras.filter((o) => fechaAltaObra(o) === ym);
+
+    const ingresos = sum(ventasMes, (f) => f.total);
+    const gastosCompras = sum(comprasMes, (f) => f.total);
+    const gastosNominas = sum(nominasMes, (n) => n.total);
+    const gastos = gastosCompras + gastosNominas;
+    const margen = ingresos - gastos;
+
+    return {
+      ym, ventasMes, comprasMes, nominasMes, obrasNuevasMes,
+      ingresos, gastosCompras, gastosNominas, gastos, margen,
+      numObrasNuevas: obrasNuevasMes.length,
+      cobrosPorMetodo: desgloseMetodo(ventasMes, 'metodoCobro'),
+      gastosPorMetodo: desgloseMetodo(comprasMes, 'metodoPago'),
+    };
+  };
+
+  // ---------------- panorama de un año completo (acumulado + por mes) ----------------
+  const statsForYear = (year) => {
+    const meses = MES_CORTO.map((label, idx) => {
+      const ym = `${year}-${String(idx + 1).padStart(2, '0')}`;
+      return { label, ...statsForMonth(ym) };
+    });
+    const ingresos = meses.reduce((s, m) => s + m.ingresos, 0);
+    const gastos = meses.reduce((s, m) => s + m.gastos, 0);
+    const obrasNuevas = meses.reduce((s, m) => s + m.numObrasNuevas, 0);
+    const max = Math.max(1, ...meses.map((m) => Math.max(m.ingresos, m.gastos)));
+    return { year, meses, ingresos, gastos, margen: ingresos - gastos, obrasNuevas, max };
+  };
 
   const obrasActivas = obrasConStats.filter((o) => o.estado === 'activa');
 
@@ -109,13 +123,11 @@ export function computeAll(data) {
   const cajaPendienteJustificar = sum(entregasConStats, (e) => e.stats.pendiente);
 
   return {
-    thisMonth, currentYear,
+    currentYear,
     clienteById, obraById, personalById,
     obraStats, obrasConStats, obrasActivas,
-    ingresosMes, gastosMes, gastosMesCompras, gastosMesNominas, margenMes,
-    pendienteCobroTotal, pendientePagoTotal,
-    cobrosMesPorMetodo, gastosMesPorMetodo, totalEnB,
-    panoramaAnual, anualIngresos, anualGastos, anualMax,
+    statsForMonth, statsForYear,
+    pendienteCobroTotal, pendientePagoTotal, totalEnB,
     entregaStats, entregasConStats, cajaSaldo, cajaPendienteJustificar, ingresosEfectivo, gastosEfectivoDirectos, totalEntregasEfectivo,
   };
 }
