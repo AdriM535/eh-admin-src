@@ -21,7 +21,7 @@ export default function Sidebar({ tab, setTab, data, onExport, userEmail, onSign
     <aside className="sidebar">
       <div className="brand">
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'conic-gradient(from 220deg, #C15B45, #C08A3E, #E4A15F, #C08A3E, #C15B45)' }}></span>
+          <img src="/logo-icon.png" alt="" style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0 }} />
           <div className="mark">Estructuras Humanizadoras</div>
         </div>
         <div className="sub">Gestión de obras y facturación</div>

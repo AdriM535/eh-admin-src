@@ -28,8 +28,8 @@ export default function Login({ signIn, signUp }) {
   return (
     <div className="authwrap">
       <form className="authcard" onSubmit={submit}>
-        <div className="brand" style={{ border: 'none', marginBottom: 18, padding: 0 }}>
-          <div className="mark">Estructuras Humanizadoras</div>
+        <div className="brand" style={{ border: 'none', marginBottom: 18, padding: 0, textAlign: 'center', display: 'block' }}>
+          <img src="/logo.png" alt="Estructuras Humanizadoras" style={{ maxWidth: 200, width: '100%', margin: '0 auto 6px' }} />
           <div className="sub">Gestión de obras y facturación</div>
         </div>
         <div className="field">
