@@ -51,7 +51,7 @@ export default function FacturasVenta({ data, actions, calc, setModal, docs }) {
         <div className="filters">
           <select value={obraFilter} onChange={(e) => setObraFilter(e.target.value)}>
             <option value="todas">Todas las obras</option>
-            {data.obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            {data.obras.map((o) => <option key={o.id} value={o.id}>{o.codigo ? `${o.codigo} — ${o.nombre}` : o.nombre}</option>)}
           </select>
           <select value={cobradoFilter} onChange={(e) => setCobradoFilter(e.target.value)}>
             <option value="todas">Cobradas y pendientes</option>
@@ -72,7 +72,7 @@ export default function FacturasVenta({ data, actions, calc, setModal, docs }) {
                 <tr key={f.id}>
                   <td>{fmtDate(f.fechaExpedicion)}</td>
                   <td>{f.serie || ''}{f.numero || '—'}</td>
-                  <td>{obra ? obra.nombre : '—'}</td>
+                  <td>{obra ? (obra.codigo ? `${obra.codigo} — ${obra.nombre}` : obra.nombre) : '—'}</td>
                   <td>{cliente ? cliente.nombre : '—'}</td>
                   <td className="num">{fmtMoney(f.total)}</td>
                   <td>

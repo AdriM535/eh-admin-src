@@ -68,18 +68,19 @@ export default function Obras({ data, actions, calc, setModal }) {
         <table>
           <thead>
             <tr>
-              <th>Obra</th><th>Cliente</th><th>Ciudad</th><th>Estado</th>
+              <th>Código</th><th>Obra</th><th>Cliente</th><th>Ciudad</th><th>Estado</th>
               <th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Indirecto</th><th>Margen real</th><th></th>
             </tr>
           </thead>
           <tbody>
-            {obras.length === 0 && <tr><td colSpan="10" className="empty">Sin obras registradas.</td></tr>}
+            {obras.length === 0 && <tr><td colSpan="11" className="empty">Sin obras registradas.</td></tr>}
             {obras.map((o) => {
               const cli = calc.clienteById(o.clienteId);
               const open = expanded === o.id;
               return (
                 <Fragment key={o.id}>
                   <tr>
+                    <td>{o.codigo || '—'}</td>
                     <td><b>{o.nombre}</b>{o.direccion && <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{o.direccion}</div>}</td>
                     <td>{cli ? cli.nombre : '—'}</td>
                     <td>{o.ciudad || '—'}</td>
@@ -97,7 +98,7 @@ export default function Obras({ data, actions, calc, setModal }) {
                   </tr>
                   {open && (
                     <tr>
-                      <td colSpan="10" style={{ background: 'var(--line-soft)' }}>
+                      <td colSpan="11" style={{ background: 'var(--line-soft)' }}>
                         <div style={{ padding: '8px 4px', fontSize: 12.5 }}>
                           {o.stats.pendienteCobro > 0 && <div style={{ marginBottom: 8 }}><span className="pill brick">Pendiente de cobro: {fmtMoney(o.stats.pendienteCobro)}</span></div>}
 

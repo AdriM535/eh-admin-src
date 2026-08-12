@@ -104,6 +104,7 @@ export function exportToExcel(data, calc) {
     const s = calc.obraStats(o.id);
     const c = clienteById(o.clienteId);
     return {
+      Código: o.codigo || '',
       Obra: o.nombre,
       Cliente: c ? c.nombre : '',
       Dirección: o.direccion || '',

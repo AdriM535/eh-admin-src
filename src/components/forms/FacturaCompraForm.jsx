@@ -54,7 +54,7 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
         <Field label="Obra (vacío si es un insumo general)">
           <select value={f.obraId} onChange={(e) => set('obraId', e.target.value)}>
             <option value="">— Sin asignar / insumo general —</option>
-            {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            {obras.map((o) => <option key={o.id} value={o.id}>{o.codigo ? `${o.codigo} — ${o.nombre}` : o.nombre}</option>)}
           </select>
         </Field>
         {!f.obraId ? (

@@ -48,7 +48,7 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
         <Field label="Obra (opcional)">
           <select value={f.obraId} onChange={(e) => set('obraId', e.target.value)}>
             <option value="">— Sin asignar —</option>
-            {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            {obras.map((o) => <option key={o.id} value={o.id}>{o.codigo ? `${o.codigo} — ${o.nombre}` : o.nombre}</option>)}
           </select>
         </Field>
         <Field label="Número"><input value={f.numero || ''} onChange={(e) => set('numero', e.target.value)} placeholder="PRE-2026-001" /></Field>

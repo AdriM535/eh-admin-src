@@ -151,7 +151,22 @@ export function useData(userId) {
   };
 
   // ---------------- OBRAS ----------------
-  const saveObra = (o) => saveRow('obras', 'obras', o);
+  // Código consecutivo AAAA-NNN, se reinicia cada año. `cache` es la lista de
+  // obras conocidas en ese momento (dataRef.current en un alta suelta, o un
+  // array local que se va empujando en bucles de importación, para que cada
+  // obra nueva del mismo lote continúe la numeración de la anterior).
+  const nextObraCodigo = (cache) => {
+    const prefix = `${new Date().getFullYear()}-`;
+    let max = 0;
+    cache.forEach((o) => {
+      if (o.codigo && o.codigo.startsWith(prefix)) {
+        const n = parseInt(o.codigo.slice(prefix.length), 10);
+        if (!isNaN(n) && n > max) max = n;
+      }
+    });
+    return `${prefix}${String(max + 1).padStart(3, '0')}`;
+  };
+  const saveObra = (o) => saveRow('obras', 'obras', o.id ? o : { ...o, codigo: nextObraCodigo(dataRef.current.obras) });
   const deleteObra = (id) => {
     if (!window.confirm('¿Eliminar esta obra? Las facturas, abonos e incidencias asociadas quedarán sin obra vinculada.')) return;
     return deleteRow('obras', 'obras', id);
@@ -350,7 +365,9 @@ export function useData(userId) {
       const r = rows[i];
       try {
         const clienteId = await findOrCreateByName('clientes', 'clientes', clientesCache, r.clienteNombre, r.clienteNif ? { nif: r.clienteNif } : {});
-        const obraId = await findOrCreateByName('obras', 'obras', obrasCache, r.obraNombre, clienteId ? { clienteId, estado: 'activa' } : { estado: 'activa' });
+        const obraExtra = { estado: 'activa', codigo: nextObraCodigo(obrasCache) };
+        if (clienteId) obraExtra.clienteId = clienteId;
+        const obraId = await findOrCreateByName('obras', 'obras', obrasCache, r.obraNombre, obraExtra);
         await insertRow('facturas_venta', 'facturasVenta', {
           obraId, clienteId, serie: r.serie || '', numero: r.numero || '',
           fechaExpedicion: r.fechaExpedicion || null, fechaCobro: r.fechaCobro || null,
@@ -379,7 +396,7 @@ export function useData(userId) {
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
       try {
-        const obraId = await findOrCreateByName('obras', 'obras', obrasCache, g.obraNombre, { estado: 'activa' });
+        const obraId = await findOrCreateByName('obras', 'obras', obrasCache, g.obraNombre, { estado: 'activa', codigo: nextObraCodigo(obrasCache) });
         let personalId = null;
         if (!obraId && g.categoriaGeneral === 'autonomo' && g.proveedor) {
           personalId = await findOrCreateByName('personal', 'personal', personalCache, g.proveedor, { tipo: 'autonomo' });
@@ -472,6 +489,7 @@ export function useData(userId) {
 
   const importObras = async (rows, onProgress) => {
     const clientesCache = dataRef.current.clientes.slice();
+    const obrasCache = dataRef.current.obras.slice();
     let ok = 0;
     let fail = 0;
     const errors = [];
@@ -481,11 +499,12 @@ export function useData(userId) {
         if (!r.nombre) throw new Error('Falta el nombre de la obra');
         const clienteId = await findOrCreateByName('clientes', 'clientes', clientesCache, r.clienteNombre);
         const estadoNorm = (r.estado || '').toString().trim().toLowerCase();
-        await insertRow('obras', 'obras', {
-          nombre: r.nombre, clienteId, direccion: r.direccion || '', ciudad: r.ciudad || '',
+        const created = await insertRow('obras', 'obras', {
+          nombre: r.nombre, codigo: nextObraCodigo(obrasCache), clienteId, direccion: r.direccion || '', ciudad: r.ciudad || '',
           estado: ESTADOS_OBRA_VALIDOS.has(estadoNorm) ? estadoNorm : 'activa',
           fechaInicio: r.fechaInicio || null, fechaFin: r.fechaFin || null, notas: r.notas || '',
         });
+        obrasCache.push(created);
         ok++;
       } catch (err) {
         fail++;

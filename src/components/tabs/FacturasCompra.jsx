@@ -53,7 +53,7 @@ export default function FacturasCompra({ data, actions, calc, setModal, docs }) 
           <select value={obraFilter} onChange={(e) => setObraFilter(e.target.value)}>
             <option value="todas">Todas las obras</option>
             <option value="general">Solo insumos generales</option>
-            {data.obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            {data.obras.map((o) => <option key={o.id} value={o.id}>{o.codigo ? `${o.codigo} — ${o.nombre}` : o.nombre}</option>)}
           </select>
         </div>
       </div>
@@ -72,7 +72,7 @@ export default function FacturasCompra({ data, actions, calc, setModal, docs }) 
                     <td>{(f.fecha || '').slice(0, 4) || '—'}</td>
                     <td>{trimestreDe(f.fecha) ? `T${trimestreDe(f.fecha)}` : '—'}</td>
                     <td>{fmtDate(f.fecha)}</td>
-                    <td>{obra ? obra.nombre : <span className="pill ochre">{categoriaLabel(f.categoriaGeneral)}</span>}</td>
+                    <td>{obra ? (obra.codigo ? `${obra.codigo} — ${obra.nombre}` : obra.nombre) : <span className="pill ochre">{categoriaLabel(f.categoriaGeneral)}</span>}</td>
                     <td>{f.numeroFactura || '—'}</td>
                     <td>{f.proveedor || '—'}</td>
                     <td className="num">{fmtMoney(f.total)}</td>

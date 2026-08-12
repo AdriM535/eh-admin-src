@@ -171,12 +171,13 @@ export default function Dashboard({ data, calc, setTab }) {
       ) : (
         <div className="tblwrap">
           <table>
-            <thead><tr><th>Obra</th><th>Cliente</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Margen real</th></tr></thead>
+            <thead><tr><th>Código</th><th>Obra</th><th>Cliente</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Margen real</th></tr></thead>
             <tbody>
               {obrasActivas.map((o) => {
                 const cli = calc.clienteById(o.clienteId);
                 return (
                   <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => setTab && setTab('obras')}>
+                    <td>{o.codigo || '—'}</td>
                     <td>{o.nombre}</td>
                     <td>{cli ? cli.nombre : '—'}</td>
                     <td className="num">{fmtMoney(o.stats.totalFacturado)}</td>

@@ -23,7 +23,7 @@ export default function AbonoForm({ initial, obras, clientes, onSave, onClose })
             }}
           >
             <option value="">— Sin asignar —</option>
-            {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            {obras.map((o) => <option key={o.id} value={o.id}>{o.codigo ? `${o.codigo} — ${o.nombre}` : o.nombre}</option>)}
           </select>
         </Field>
         <Field label="Cliente">

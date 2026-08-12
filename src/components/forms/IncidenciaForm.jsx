@@ -15,7 +15,7 @@ export default function IncidenciaForm({ initial, obras, personal, onSave, onClo
         <Field label="Obra">
           <select value={f.obraId} onChange={(e) => set('obraId', e.target.value)}>
             <option value="">— Sin asignar —</option>
-            {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            {obras.map((o) => <option key={o.id} value={o.id}>{o.codigo ? `${o.codigo} — ${o.nombre}` : o.nombre}</option>)}
           </select>
         </Field>
         <Field label="Responsable">

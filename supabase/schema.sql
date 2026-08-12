@@ -35,6 +35,7 @@ create table if not exists clientes (
 create table if not exists obras (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
+  codigo text unique,    -- código consecutivo AAAA-NNN, se reinicia cada año, asignado al crear la obra
   cliente_id uuid references clientes(id) on delete set null,
   direccion text,
   ciudad text,

@@ -8,7 +8,13 @@ export default function ObraForm({ initial, clientes, onSave, onClose }) {
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
   return (
     <Modal title={initial && initial.id ? 'Editar obra' : 'Nueva obra'} onClose={onClose}>
+      {f.id && (
+        <Field label="Código">
+          <input value={f.codigo || '—'} disabled />
+        </Field>
+      )}
       <Field label="Nombre de la obra"><input value={f.nombre} onChange={(e) => set('nombre', e.target.value)} placeholder="Ej. Reparación fachada Calle Olano" /></Field>
+      {!f.id && <div className="desc" style={{ marginTop: -8, marginBottom: 10 }}>Se le asignará automáticamente un código consecutivo (ej. {new Date().getFullYear()}-001) al guardar.</div>}
       <div className="grid2">
         <Field label="Cliente">
           <select value={f.clienteId} onChange={(e) => set('clienteId', e.target.value)}>
