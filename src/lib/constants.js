@@ -39,8 +39,28 @@ export const METODOS_COBRO = [
 ];
 
 export const TIPOS_PERSONAL = [
-  { id: 'empleado', label: 'Empleado' },
-  { id: 'autonomo', label: 'Autónomo' },
+  { id: 'empleado', label: 'Empleado (directo)' },
+  { id: 'autonomo', label: 'Autónomo / especialista externo' },
+];
+
+// Especialidad de un autónomo/especialista externo (albañil, electricista…).
+// Solo aplica a personal con tipo "autonomo".
+export const ESPECIALIDADES = [
+  { id: 'albanileria', label: 'Albañilería' },
+  { id: 'electricidad', label: 'Electricidad' },
+  { id: 'fontaneria', label: 'Fontanería' },
+  { id: 'pintura', label: 'Pintura' },
+  { id: 'aire_acondicionado', label: 'Aire acondicionado' },
+  { id: 'calderas', label: 'Calderas' },
+  { id: 'carpinteria', label: 'Carpintería' },
+  { id: 'otro', label: 'Otro' },
+];
+
+// Roles de usuario de la app (tabla perfiles.role).
+export const ROLES = [
+  { id: 'admin', label: 'Administradora (desarrolladora)', desc: 'Ve todo, puede hacer cambios y gestionar usuarios/roles.' },
+  { id: 'directivo', label: 'Directivo', desc: 'Ve todo y opera el sistema (sin gestionar usuarios ni respaldos).' },
+  { id: 'operativo', label: 'Operativo', desc: 'Obras, incidencias, caja (solo lectura) y captura de facturas de compra.' },
 ];
 
 export const TIPOS_NOMINA = [

@@ -8,7 +8,7 @@ import { exportToExcel } from './lib/excelExport.js';
 
 import Login from './components/Auth/Login.jsx';
 import Sidebar from './components/Sidebar.jsx';
-import OperarioPanel from './components/OperarioPanel.jsx';
+import OperativoPanel from './components/OperativoPanel.jsx';
 import Usuarios from './components/tabs/Usuarios.jsx';
 import Respaldos from './components/tabs/Respaldos.jsx';
 
@@ -59,11 +59,12 @@ function Operacion({ user, onSignOut }) {
 
   if (loading || perfilLoading) return <div className="loading">Cargando obras y facturas…</div>;
 
-  if (perfil.role === 'operario') {
-    return <OperarioPanel data={data} actions={actions} docs={docs} perfil={perfil} userEmail={user.email} onSignOut={onSignOut} />;
+  if (perfil.role === 'operativo') {
+    return <OperativoPanel data={data} actions={actions} docs={docs} perfil={perfil} userEmail={user.email} onSignOut={onSignOut} />;
   }
 
   const calc = computeAll(data);
+  const isAdmin = perfil.role === 'admin';
 
   const wrap = (fn) => async (...args) => {
     await fn(...args);
@@ -74,7 +75,7 @@ function Operacion({ user, onSignOut }) {
 
   return (
     <div className="app">
-      <Sidebar tab={tab} setTab={setTab} data={data} onExport={() => exportToExcel(data, calc)} userEmail={user.email} onSignOut={onSignOut} />
+      <Sidebar tab={tab} setTab={setTab} data={data} onExport={() => exportToExcel(data, calc)} userEmail={user.email} isAdmin={isAdmin} onSignOut={onSignOut} />
 
       <main>
         {error && <div className="alertrow crit" style={{ marginBottom: 16 }}><span className="tag">ERROR</span>{error}</div>}
@@ -88,14 +89,14 @@ function Operacion({ user, onSignOut }) {
         {tab === 'personal' && <Personal {...tabProps} />}
         {tab === 'nominas' && <Nominas {...tabProps} />}
         {tab === 'incidencias' && <Incidencias {...tabProps} />}
-        {tab === 'importar' && <Importar {...tabProps} />}
+        {isAdmin && tab === 'importar' && <Importar {...tabProps} />}
         {tab === 'caja' && <Caja {...tabProps} />}
         {tab === 'servicios' && <Servicios {...tabProps} />}
-        {tab === 'usuarios' && <Usuarios {...tabProps} />}
-        {tab === 'respaldos' && <Respaldos {...tabProps} />}
+        {isAdmin && tab === 'usuarios' && <Usuarios {...tabProps} />}
+        {isAdmin && tab === 'respaldos' && <Respaldos {...tabProps} />}
       </main>
 
-      {modal?.type === 'obra' && <ObraForm initial={modal.initial} clientes={data.clientes} onSave={wrap(actions.saveObra)} onClose={() => setModal(null)} />}
+      {modal?.type === 'obra' && <ObraForm initial={modal.initial} clientes={data.clientes} personal={data.personal} onSave={wrap(actions.saveObra)} onClose={() => setModal(null)} />}
       {modal?.type === 'cliente' && <ClienteForm initial={modal.initial} onSave={wrap(actions.saveCliente)} onClose={() => setModal(null)} />}
       {modal?.type === 'facturaVenta' && (
         <FacturaVentaForm initial={modal.initial} obras={data.obras} clientes={data.clientes} docs={docs} onSave={wrap(actions.saveFacturaVenta)} onClose={() => setModal(null)} />

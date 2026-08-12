@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient.js';
 import { rowToCamel, objToSnake } from '../../lib/utils.js';
+import { ROLES } from '../../lib/constants.js';
 
 export default function Usuarios({ data }) {
   const [perfiles, setPerfiles] = useState([]);
@@ -31,8 +32,11 @@ export default function Usuarios({ data }) {
         <div>
           <h1>Usuarios</h1>
           <div className="desc">
-            Quién puede entrar y qué puede ver. Las cuentas nuevas entran como "Operario" (solo foto de factura de
-            compra y justificar caja) hasta que las asciendas aquí a Admin.
+            Quién puede entrar y qué puede ver. Las cuentas nuevas entran como "Operativo" (obras, incidencias, caja
+            en solo lectura y captura de facturas de compra) hasta que les asignes aquí otro rol.
+          </div>
+          <div className="desc" style={{ marginTop: 6 }}>
+            {ROLES.map((r) => <div key={r.id}><b>{r.label}:</b> {r.desc}</div>)}
           </div>
         </div>
       </div>
@@ -52,8 +56,7 @@ export default function Usuarios({ data }) {
                 <td>{p.email || p.id}</td>
                 <td>
                   <select value={p.role} disabled={savingId === p.id} onChange={(e) => update(p.id, { role: e.target.value })}>
-                    <option value="admin">Admin (ve todo)</option>
-                    <option value="operario">Operario (foto factura + caja)</option>
+                    {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                   </select>
                 </td>
                 <td>

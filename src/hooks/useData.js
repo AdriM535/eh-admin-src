@@ -16,6 +16,7 @@ const emptyData = () => ({
   presupuestoLineas: [],
   incidencias: [],
   servicios: [],
+  obraEvidencias: [],
 });
 
 // key en `data` -> tabla en Supabase
@@ -33,6 +34,7 @@ const TABLES = {
   presupuestoLineas: 'presupuesto_lineas',
   incidencias: 'incidencias',
   servicios: 'servicios',
+  obraEvidencias: 'obra_evidencias',
 };
 
 export function useData(userId) {
@@ -176,6 +178,13 @@ export function useData(userId) {
     if (!window.confirm(`¿Eliminar ${ids.length} obra(s)? Las facturas, abonos e incidencias asociadas no se borran, solo quedan sin obra vinculada. Esta acción no se puede deshacer.`)) return;
     return deleteRowsBulk('obras', 'obras', ids, onProgress);
   };
+
+  // Fotos de evidencia adjuntas a una obra (obligatorias, mínimo 3, para que
+  // el rol Operativo pueda marcarla como "finalizada" — lo exige también la
+  // RLS en la base de datos).
+  const addObraEvidencia = (obraId, adjunto) =>
+    insertRow('obra_evidencias', 'obraEvidencias', { obraId, storagePath: adjunto.adjuntoPath, nombreArchivo: adjunto.adjuntoNombre });
+  const deleteObraEvidencia = (id) => deleteRow('obra_evidencias', 'obraEvidencias', id);
 
   // ---------------- PERSONAL ----------------
   const savePersonal = (p) => saveRow('personal', 'personal', p);
@@ -526,6 +535,8 @@ export function useData(userId) {
       saveObra,
       deleteObra,
       deleteObrasBulk,
+      addObraEvidencia,
+      deleteObraEvidencia,
       savePersonal,
       deletePersonal,
       saveFacturaVenta,

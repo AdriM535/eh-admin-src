@@ -49,12 +49,13 @@ create table if not exists obras (
 create index if not exists obras_cliente_id_idx on obras(cliente_id);
 
 -- ---------------------------------------------------------------------------
--- PERSONAL (empleados y autónomos)
+-- PERSONAL (empleados directos y autónomos/especialistas externos)
 -- ---------------------------------------------------------------------------
 create table if not exists personal (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
   tipo text not null default 'empleado',          -- empleado | autonomo
+  especialidad text,                              -- solo si tipo = autonomo: albañilería, electricidad…
   nif text,
   telefono text,
   email text,
@@ -63,6 +64,10 @@ create table if not exists personal (
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
+
+-- La obra puede tener una persona (empleado o autónomo) como responsable.
+alter table obras add column if not exists responsable_id uuid references personal(id) on delete set null;
+create index if not exists obras_responsable_id_idx on obras(responsable_id);
 
 -- ---------------------------------------------------------------------------
 -- FACTURAS DE VENTA (ingresos a clientes)
@@ -270,24 +275,30 @@ create index if not exists incidencias_obra_id_idx on incidencias(obra_id);
 create index if not exists incidencias_personal_id_idx on incidencias(personal_id);
 
 -- ---------------------------------------------------------------------------
--- PERFILES: rol de cada cuenta (admin ve/gestiona todo; operario solo
--- puede fotografiar facturas de compra y justificar entregas de caja).
+-- PERFILES: rol de cada cuenta.
+--   admin      — Administradora/desarrolladora: ve/edita todo, gestiona
+--                usuarios/roles, respaldos e importación.
+--   directivo  — ve y opera todo el negocio, sin gestionar usuarios ni
+--                entrar a Respaldos/Importar.
+--   operativo  — obras (cambia a "finalizada" solo con ≥3 fotos de
+--                evidencia), incidencias propias, caja en solo lectura y
+--                captura de facturas de compra propias.
 -- ---------------------------------------------------------------------------
 create table if not exists perfiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   nombre text,
-  role text not null default 'operario',           -- admin | operario
+  role text not null default 'operativo',           -- admin | directivo | operativo
   personal_id uuid references personal(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
--- Alta automática de perfil (como operario) cada vez que se registra una
--- cuenta nueva; Sindy la asciende a admin manualmente si hace falta.
+-- Alta automática de perfil (como operativo) cada vez que se registra una
+-- cuenta nueva; se asciende manualmente desde la pestaña Usuarios si hace falta.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.perfiles (id, email, role) values (new.id, new.email, 'operario')
+  insert into public.perfiles (id, email, role) values (new.id, new.email, 'operativo')
   on conflict (id) do nothing;
   return new;
 end;
@@ -299,6 +310,17 @@ create trigger on_auth_user_created after insert on auth.users
 create or replace function public.is_admin()
 returns boolean language sql security definer set search_path = public stable as $$
   select exists (select 1 from public.perfiles where id = auth.uid() and role = 'admin');
+$$;
+
+create or replace function public.my_role()
+returns text language sql security definer set search_path = public stable as $$
+  select role from public.perfiles where id = auth.uid();
+$$;
+
+-- admin o directivo: acceso completo a la operación del negocio.
+create or replace function public.is_staff()
+returns boolean language sql security definer set search_path = public stable as $$
+  select public.my_role() in ('admin', 'directivo');
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -313,11 +335,25 @@ create table if not exists respaldos_semanales (
 );
 
 -- ---------------------------------------------------------------------------
+-- OBRA_EVIDENCIAS: fotos adjuntas al marcar una obra como "finalizada".
+-- ---------------------------------------------------------------------------
+create table if not exists obra_evidencias (
+  id uuid primary key default gen_random_uuid(),
+  obra_id uuid not null references obras(id) on delete cascade,
+  storage_path text not null,
+  nombre_archivo text,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists obra_evidencias_obra_id_idx on obra_evidencias(obra_id);
+
+-- ---------------------------------------------------------------------------
 -- ROW LEVEL SECURITY
--- admin: acceso completo a todo. operario: solo lectura de obras/personal/
--- entregas de caja (para elegir en el formulario) y solo sus propias
--- facturas de compra (las que él mismo sube). El resto de tablas son
--- invisibles para el operario.
+-- admin/directivo (is_staff): acceso completo a la operación del negocio.
+-- Respaldos e Importar (implícito, sin tabla propia) siguen exclusivos de
+-- admin. El operativo solo lee obras/personal/entregas de caja, gestiona
+-- sus propias facturas de compra e incidencias, y solo puede cerrar una
+-- obra ("finalizada") si adjuntó ≥3 fotos de evidencia.
 -- ---------------------------------------------------------------------------
 alter table perfiles enable row level security;
 drop policy if exists "perfiles_select" on perfiles;
@@ -333,18 +369,21 @@ declare
 begin
   for t in select unnest(array[
     'clientes','facturas_venta','abonos','nominas','presupuestos','presupuesto_lineas',
-    'incidencias','respaldos_semanales','servicios'
+    'respaldos_semanales','servicios'
   ])
   loop
     execute format('alter table %I enable row level security;', t);
     execute format('drop policy if exists "team_full_access" on %I;', t);
     execute format('drop policy if exists "admin_full_access" on %I;', t);
     execute format(
-      'create policy "admin_full_access" on %I for all to authenticated using (is_admin()) with check (is_admin());',
+      'create policy "admin_full_access" on %I for all to authenticated using (is_staff()) with check (is_staff());',
       t
     );
   end loop;
 end $$;
+-- respaldos_semanales debe quedar exclusivo de admin (Directivo no entra a Respaldos).
+drop policy if exists "admin_full_access" on respaldos_semanales;
+create policy "admin_full_access" on respaldos_semanales for all to authenticated using (is_admin()) with check (is_admin());
 
 do $$
 declare
@@ -357,17 +396,40 @@ begin
     execute format('drop policy if exists "admin_full_access" on %I;', t);
     execute format('drop policy if exists "operario_read" on %I;', t);
     execute format(
-      'create policy "admin_full_access" on %I for all to authenticated using (is_admin()) with check (is_admin());',
+      'create policy "admin_full_access" on %I for all to authenticated using (is_staff()) with check (is_staff());',
       t
     );
     execute format('create policy "operario_read" on %I for select to authenticated using (true);', t);
   end loop;
 end $$;
 
+-- El operativo puede marcar una obra como "finalizada" solo si ya adjuntó
+-- al menos 3 fotos de evidencia; para cualquier otro cambio de estado no
+-- hay restricción de fotos.
+drop policy if exists "operativo_update_estado" on obras;
+create policy "operativo_update_estado" on obras for update to authenticated
+  using (my_role() = 'operativo')
+  with check (
+    my_role() = 'operativo'
+    and (estado <> 'finalizada' or (select count(*) from obra_evidencias where obra_id = obras.id) >= 3)
+  );
+
+alter table obra_evidencias enable row level security;
+drop policy if exists "staff_full_access" on obra_evidencias;
+create policy "staff_full_access" on obra_evidencias for all to authenticated using (is_staff()) with check (is_staff());
+drop policy if exists "read_all" on obra_evidencias;
+create policy "read_all" on obra_evidencias for select to authenticated using (true);
+drop policy if exists "operativo_insert" on obra_evidencias;
+create policy "operativo_insert" on obra_evidencias for insert to authenticated
+  with check (my_role() = 'operativo' and created_by = auth.uid());
+drop policy if exists "operativo_delete_own" on obra_evidencias;
+create policy "operativo_delete_own" on obra_evidencias for delete to authenticated
+  using (my_role() = 'operativo' and created_by = auth.uid());
+
 alter table facturas_compra enable row level security;
 drop policy if exists "team_full_access" on facturas_compra;
 drop policy if exists "admin_full_access" on facturas_compra;
-create policy "admin_full_access" on facturas_compra for all to authenticated using (is_admin()) with check (is_admin());
+create policy "admin_full_access" on facturas_compra for all to authenticated using (is_staff()) with check (is_staff());
 drop policy if exists "operario_select_own" on facturas_compra;
 create policy "operario_select_own" on facturas_compra for select to authenticated using (created_by = auth.uid());
 drop policy if exists "operario_insert" on facturas_compra;
@@ -383,12 +445,27 @@ drop policy if exists "compra_lineas_access" on factura_compra_lineas;
 create policy "compra_lineas_access" on factura_compra_lineas for all to authenticated
   using (exists (
     select 1 from facturas_compra fc
-    where fc.id = factura_compra_lineas.factura_compra_id and (is_admin() or fc.created_by = auth.uid())
+    where fc.id = factura_compra_lineas.factura_compra_id and (is_staff() or fc.created_by = auth.uid())
   ))
   with check (exists (
     select 1 from facturas_compra fc
-    where fc.id = factura_compra_lineas.factura_compra_id and (is_admin() or fc.created_by = auth.uid())
+    where fc.id = factura_compra_lineas.factura_compra_id and (is_staff() or fc.created_by = auth.uid())
   ));
+
+-- incidencias: admin/directivo todo; el operativo ve todas, crea las suyas
+-- y edita/borra solo las suyas.
+alter table incidencias enable row level security;
+drop policy if exists "team_full_access" on incidencias;
+drop policy if exists "admin_full_access" on incidencias;
+create policy "admin_full_access" on incidencias for all to authenticated using (is_staff()) with check (is_staff());
+drop policy if exists "operativo_select_all" on incidencias;
+create policy "operativo_select_all" on incidencias for select to authenticated using (my_role() = 'operativo');
+drop policy if exists "operativo_insert" on incidencias;
+create policy "operativo_insert" on incidencias for insert to authenticated with check (my_role() = 'operativo' and created_by = auth.uid());
+drop policy if exists "operativo_update_own" on incidencias;
+create policy "operativo_update_own" on incidencias for update to authenticated using (my_role() = 'operativo' and created_by = auth.uid()) with check (my_role() = 'operativo' and created_by = auth.uid());
+drop policy if exists "operativo_delete_own" on incidencias;
+create policy "operativo_delete_own" on incidencias for delete to authenticated using (my_role() = 'operativo' and created_by = auth.uid());
 
 -- ---------------------------------------------------------------------------
 -- STORAGE: bucket privado para los adjuntos de facturas (PDF/foto) y otro
@@ -436,7 +513,7 @@ declare
   t text;
 begin
   for t in select unnest(array[
-    'clientes','obras','personal','facturas_venta','facturas_compra',
+    'clientes','obras','obra_evidencias','personal','facturas_venta','facturas_compra',
     'factura_compra_lineas','entregas_efectivo','abonos','nominas','presupuestos','presupuesto_lineas',
     'incidencias','perfiles','servicios'
   ])

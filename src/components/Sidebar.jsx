@@ -11,12 +11,13 @@ const NAV_ITEMS = [
   { id: 'personal', label: 'Personal', n: '09' },
   { id: 'nominas', label: 'Nóminas', n: '10' },
   { id: 'incidencias', label: 'Incidencias', n: '11' },
-  { id: 'importar', label: 'Importar Excel', n: '12' },
-  { id: 'usuarios', label: 'Usuarios', n: '13' },
-  { id: 'respaldos', label: 'Respaldos', n: '14' },
+  { id: 'importar', label: 'Importar Excel', n: '12', adminOnly: true },
+  { id: 'usuarios', label: 'Usuarios', n: '13', adminOnly: true },
+  { id: 'respaldos', label: 'Respaldos', n: '14', adminOnly: true },
 ];
 
-export default function Sidebar({ tab, setTab, data, onExport, userEmail, onSignOut }) {
+export default function Sidebar({ tab, setTab, data, onExport, userEmail, isAdmin, onSignOut }) {
+  const items = NAV_ITEMS.filter((it) => !it.adminOnly || isAdmin);
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -27,7 +28,7 @@ export default function Sidebar({ tab, setTab, data, onExport, userEmail, onSign
         <div className="sub">Gestión de obras y facturación</div>
       </div>
       <nav>
-        {NAV_ITEMS.map((it) => (
+        {items.map((it) => (
           <button key={it.id} className={'navbtn' + (tab === it.id ? ' active' : '')} onClick={() => setTab(it.id)}>
             <span className="num">{it.n}</span>{it.label}
           </button>

@@ -21,6 +21,8 @@ const IMPORT_ACTIONS = {
 
 export default function Importar({ actions }) {
   const [tipo, setTipo] = useState(null);
+  const [file, setFile] = useState(null);
+  const [reading, setReading] = useState(false);
   const [workbook, setWorkbook] = useState(null); // { sheetNames, sheets }
   const [sheetName, setSheetName] = useState('');
   const [headerRowIndex, setHeaderRowIndex] = useState(null);
@@ -35,6 +37,8 @@ export default function Importar({ actions }) {
 
   const reset = () => {
     setTipo(null);
+    setFile(null);
+    setReading(false);
     setWorkbook(null);
     setSheetName('');
     setHeaderRowIndex(null);
@@ -45,10 +49,17 @@ export default function Importar({ actions }) {
     setError('');
   };
 
-  const handleFile = async (e) => {
-    const file = e.target.files[0];
+  const handleFile = (e) => {
+    const f = e.target.files[0];
     e.target.value = '';
+    if (!f) return;
+    setError('');
+    setFile(f);
+  };
+
+  const confirmImportacion = async () => {
     if (!file) return;
+    setReading(true);
     setError('');
     try {
       const wb = await readWorkbook(file);
@@ -57,6 +68,8 @@ export default function Importar({ actions }) {
       setHeaderRowIndex(null);
     } catch (err) {
       setError('No se pudo leer el archivo: ' + (err.message || err));
+    } finally {
+      setReading(false);
     }
   };
 
@@ -143,6 +156,14 @@ export default function Importar({ actions }) {
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: 20 }}>
           <div className="desc" style={{ marginBottom: 12 }}>Importando: <b>{spec.label}</b> — <button className="btn ghost small" onClick={reset}>cambiar</button></div>
           <input type="file" accept=".xlsx,.xls" onChange={handleFile} />
+          {file && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 8 }}>Archivo elegido: <b>{file.name}</b></div>
+              <button className="btn" disabled={reading} onClick={confirmImportacion}>
+                {reading ? 'Leyendo…' : 'Confirmar importación'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
