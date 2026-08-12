@@ -165,6 +165,28 @@ export default function Dashboard({ data, calc, setTab }) {
         </div>
       </div>
 
+      <div className="tblwrap" style={{ marginBottom: 20 }}>
+        <table>
+          <thead><tr><th>Mes</th><th>Facturado</th><th>Gastos</th><th>Margen</th></tr></thead>
+          <tbody>
+            {ys.meses.map((m) => (
+              <tr key={m.ym} style={{ cursor: 'pointer' }} onClick={() => { setMMonth(ys.meses.indexOf(m) + 1); setMYear(aYear); }}>
+                <td>{m.label}</td>
+                <td className="num">{fmtMoney(m.ingresos)}</td>
+                <td className="num">{fmtMoney(m.gastos)}</td>
+                <td className={'num ' + (m.margen >= 0 ? 'pos' : 'neg')}>{fmtMoney(m.margen)}</td>
+              </tr>
+            ))}
+            <tr style={{ fontWeight: 700, borderTop: '2px solid var(--line)' }}>
+              <td>Total {aYear}</td>
+              <td className="num">{fmtMoney(ys.ingresos)}</td>
+              <td className="num">{fmtMoney(ys.gastos)}</td>
+              <td className={'num ' + (ys.margen >= 0 ? 'pos' : 'neg')}>{fmtMoney(ys.margen)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <div className="section-title">Obras activas <span className="count">{obrasActivas.length}</span></div>
       {obrasActivas.length === 0 ? (
         <div className="empty">Todavía no hay obras activas. Ve a la pestaña "Obras" para dar de alta la primera.</div>
