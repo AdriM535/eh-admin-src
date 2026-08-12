@@ -1,19 +1,19 @@
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Panorama', n: '00' },
-  { id: 'obras', label: 'Obras', n: '01' },
-  { id: 'clientes', label: 'Clientes', n: '02' },
-  { id: 'ventas', label: 'Facturas de venta', n: '03' },
-  { id: 'compras', label: 'Facturas de compra', n: '04' },
-  { id: 'abonos', label: 'Abonos y anticipos', n: '05' },
-  { id: 'caja', label: 'Caja', n: '06' },
-  { id: 'presupuestos', label: 'Presupuestos', n: '07' },
-  { id: 'servicios', label: 'Catálogo de servicios', n: '08' },
-  { id: 'personal', label: 'Personal', n: '09' },
-  { id: 'nominas', label: 'Nóminas', n: '10' },
-  { id: 'incidencias', label: 'Incidencias', n: '11' },
-  { id: 'importar', label: 'Importar Excel', n: '12', adminOnly: true },
-  { id: 'usuarios', label: 'Usuarios', n: '13', adminOnly: true },
-  { id: 'respaldos', label: 'Respaldos', n: '14', adminOnly: true },
+  { id: 'dashboard', label: 'Panorama', icon: '📊' },
+  { id: 'obras', label: 'Obras', icon: '🏗️' },
+  { id: 'clientes', label: 'Clientes', icon: '👥' },
+  { id: 'ventas', label: 'Facturas de venta', icon: '🧾' },
+  { id: 'compras', label: 'Facturas de compra', icon: '🛒' },
+  { id: 'abonos', label: 'Abonos y anticipos', icon: '💳' },
+  { id: 'caja', label: 'Caja', icon: '💵' },
+  { id: 'presupuestos', label: 'Presupuestos', icon: '📝' },
+  { id: 'servicios', label: 'Catálogo de servicios', icon: '🧰' },
+  { id: 'personal', label: 'Personal', icon: '👷' },
+  { id: 'nominas', label: 'Nóminas', icon: '💼' },
+  { id: 'incidencias', label: 'Incidencias', icon: '⚠️' },
+  { id: 'importar', label: 'Importar Excel', icon: '📥', adminOnly: true },
+  { id: 'usuarios', label: 'Usuarios', icon: '🔐', adminOnly: true },
+  { id: 'respaldos', label: 'Respaldos', icon: '💾', adminOnly: true },
 ];
 
 export default function Sidebar({ tab, setTab, data, onExport, userEmail, isAdmin, onSignOut }) {
@@ -30,7 +30,7 @@ export default function Sidebar({ tab, setTab, data, onExport, userEmail, isAdmi
       <nav>
         {items.map((it) => (
           <button key={it.id} className={'navbtn' + (tab === it.id ? ' active' : '')} onClick={() => setTab(it.id)}>
-            <span className="num">{it.n}</span>{it.label}
+            <span className="icon">{it.icon}</span>{it.label}
           </button>
         ))}
       </nav>

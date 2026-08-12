@@ -74,11 +74,13 @@ nav{display:flex;flex-direction:column;margin-top:6px;overflow-y:auto;}
   position:relative;
   border-left:3px solid transparent;
 }
-.navbtn .num{
-  font-size:11px;
-  font-weight:600;
-  color:#9CA6AF;
-  width:16px;
+.navbtn .icon{
+  font-size:15px;
+  width:20px;
+  text-align:center;
+  flex-shrink:0;
+  filter:grayscale(35%);
+  opacity:0.85;
 }
 .navbtn:hover{background:rgba(193,91,69,0.08);color:var(--ink);}
 .navbtn.active{
@@ -86,7 +88,7 @@ nav{display:flex;flex-direction:column;margin-top:6px;overflow-y:auto;}
   color:var(--accent-dark);
   border-left:3px solid var(--accent);
 }
-.navbtn.active .num{color:var(--accent);}
+.navbtn.active .icon{filter:none;opacity:1;}
 .sidebar-foot{
   margin-top:auto;
   padding:14px 20px 0;
