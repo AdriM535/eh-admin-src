@@ -4,6 +4,7 @@ import { fmtMoney, fmtDate } from '../../lib/utils.js';
 export default function FacturasVenta({ data, actions, calc, setModal, docs }) {
   const [obraFilter, setObraFilter] = useState('todas');
   const [cobradoFilter, setCobradoFilter] = useState('todas');
+  const [marcando, setMarcando] = useState(null); // { done, total } | null
 
   const facturas = data.facturasVenta
     .filter((f) => obraFilter === 'todas' || f.obraId === obraFilter)
@@ -12,6 +13,18 @@ export default function FacturasVenta({ data, actions, calc, setModal, docs }) {
     .sort((a, b) => (b.fechaExpedicion || '').localeCompare(a.fechaExpedicion || ''));
 
   const totalFiltrado = facturas.reduce((s, f) => s + Number(f.total || 0), 0);
+  const pendientesFiltradas = facturas.filter((f) => !f.cobrado);
+
+  const marcarCobradas = async () => {
+    setMarcando({ done: 0, total: pendientesFiltradas.length });
+    try {
+      await actions.marcarFacturasVentaCobradas(pendientesFiltradas.map((f) => f.id), (done, total) => setMarcando({ done, total }));
+    } catch (err) {
+      alert('No se pudieron marcar todas: ' + (err.message || err));
+    } finally {
+      setMarcando(null);
+    }
+  };
 
   return (
     <>
@@ -20,7 +33,14 @@ export default function FacturasVenta({ data, actions, calc, setModal, docs }) {
           <h1>Facturas de venta</h1>
           <div className="desc">Ingresos facturados a clientes por obra</div>
         </div>
-        <button className="btn" onClick={() => setModal({ type: 'facturaVenta' })}>+ Nueva factura</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {pendientesFiltradas.length > 0 && (
+            <button className="btn ghost" disabled={!!marcando} onClick={marcarCobradas}>
+              {marcando ? `Marcando ${marcando.done}/${marcando.total}…` : `Marcar ${pendientesFiltradas.length} pendiente(s) como cobradas`}
+            </button>
+          )}
+          <button className="btn" onClick={() => setModal({ type: 'facturaVenta' })}>+ Nueva factura</button>
+        </div>
       </div>
       <div className="ledger" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
         <div className="cell"><div className="lbl">Facturado (filtro actual)</div><div className="val">{fmtMoney(totalFiltrado)}</div></div>

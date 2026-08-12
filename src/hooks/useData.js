@@ -122,6 +122,22 @@ export function useData(userId) {
     }
   };
 
+  // Igual que deleteRowsBulk pero para actualizar muchas filas a la vez con
+  // el mismo cambio (p.ej. marcar un lote de facturas como cobradas/pagadas).
+  const updateRowsBulk = async (table, key, ids, patch, onProgress) => {
+    if (ids.length === 0) return;
+    const payload = sanitizeForDb(objToSnake(patch));
+    const hechos = [];
+    for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+      const tanda = ids.slice(i, i + BULK_CHUNK);
+      const { error: err } = await supabase.from(table).update(payload).in('id', tanda);
+      if (err) throw err;
+      hechos.push(...tanda);
+      setData((prev) => ({ ...prev, [key]: prev[key].map((x) => (hechos.includes(x.id) ? { ...x, ...patch } : x)) }));
+      if (onProgress) onProgress(hechos.length, ids.length);
+    }
+  };
+
   // ---------------- CLIENTES ----------------
   const saveCliente = (c) => saveRow('clientes', 'clientes', c);
   const deleteCliente = (id) => {
@@ -160,6 +176,11 @@ export function useData(userId) {
     const f = dataRef.current.facturasVenta.find((x) => x.id === id);
     await deleteRow('facturas_venta', 'facturasVenta', id);
     return f;
+  };
+  const marcarFacturasVentaCobradas = (ids, onProgress) => {
+    if (ids.length === 0) return;
+    if (!window.confirm(`¿Marcar ${ids.length} factura(s) de venta como cobradas?`)) return;
+    return updateRowsBulk('facturas_venta', 'facturasVenta', ids, { cobrado: true }, onProgress);
   };
 
   // ---------------- FACTURAS DE COMPRA (cabecera + líneas de producto) ----------------
@@ -490,6 +511,7 @@ export function useData(userId) {
       deletePersonal,
       saveFacturaVenta,
       deleteFacturaVenta,
+      marcarFacturasVentaCobradas,
       saveFacturaCompra,
       deleteFacturaCompra,
       deleteFacturasCompraBulk,
