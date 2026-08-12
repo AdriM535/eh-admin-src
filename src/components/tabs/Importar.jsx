@@ -21,10 +21,11 @@ const IMPORT_ACTIONS = {
 
 export default function Importar({ actions }) {
   const [tipo, setTipo] = useState(null);
-  const [file, setFile] = useState(null);
+  const [fileName, setFileName] = useState('');
   const [reading, setReading] = useState(false);
   const [workbook, setWorkbook] = useState(null); // { sheetNames, sheets }
   const [sheetName, setSheetName] = useState('');
+  const [selectedRow, setSelectedRow] = useState(null); // fila elegida en la tabla, aún sin confirmar
   const [headerRowIndex, setHeaderRowIndex] = useState(null);
   const [mapping, setMapping] = useState({});
   const [busy, setBusy] = useState(false);
@@ -37,10 +38,11 @@ export default function Importar({ actions }) {
 
   const reset = () => {
     setTipo(null);
-    setFile(null);
+    setFileName('');
     setReading(false);
     setWorkbook(null);
     setSheetName('');
+    setSelectedRow(null);
     setHeaderRowIndex(null);
     setMapping({});
     setBusy(false);
@@ -49,22 +51,18 @@ export default function Importar({ actions }) {
     setError('');
   };
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const f = e.target.files[0];
     e.target.value = '';
     if (!f) return;
     setError('');
-    setFile(f);
-  };
-
-  const confirmImportacion = async () => {
-    if (!file) return;
+    setFileName(f.name);
     setReading(true);
-    setError('');
     try {
-      const wb = await readWorkbook(file);
+      const wb = await readWorkbook(f);
       setWorkbook(wb);
       setSheetName(wb.sheetNames[0]);
+      setSelectedRow(null);
       setHeaderRowIndex(null);
     } catch (err) {
       setError('No se pudo leer el archivo: ' + (err.message || err));
@@ -73,7 +71,9 @@ export default function Importar({ actions }) {
     }
   };
 
-  const confirmHeaderRow = (idx) => {
+  const confirmImportacion = () => {
+    if (selectedRow == null) return;
+    const idx = selectedRow;
     setHeaderRowIndex(idx);
     const headerRow = sheetRows[idx].map((c) => (c == null ? '' : String(c)));
     const guessed = {};
@@ -155,25 +155,19 @@ export default function Importar({ actions }) {
       {tipo && !workbook && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: 20 }}>
           <div className="desc" style={{ marginBottom: 12 }}>Importando: <b>{spec.label}</b> — <button className="btn ghost small" onClick={reset}>cambiar</button></div>
-          <input type="file" accept=".xlsx,.xls" onChange={handleFile} />
-          {file && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 8 }}>Archivo elegido: <b>{file.name}</b></div>
-              <button className="btn" disabled={reading} onClick={confirmImportacion}>
-                {reading ? 'Leyendo…' : 'Confirmar importación'}
-              </button>
-            </div>
-          )}
+          <input type="file" accept=".xlsx,.xls" onChange={handleFile} disabled={reading} />
+          {fileName && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 8 }}>{reading ? 'Leyendo…' : `Archivo elegido: ${fileName}`}</div>}
         </div>
       )}
 
-      {/* Paso 3: elegir hoja + fila de cabeceras */}
+      {/* Paso 3: elegir hoja + fila de cabeceras, y confirmar */}
       {tipo && workbook && headerRowIndex == null && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: 20 }}>
+          <div className="desc" style={{ marginBottom: 12 }}>Archivo: <b>{fileName}</b> — <button className="btn ghost small" onClick={reset}>cambiar</button></div>
           {workbook.sheetNames.length > 1 && (
             <div className="field" style={{ maxWidth: 320 }}>
               <label>Hoja del Excel</label>
-              <select value={sheetName} onChange={(e) => { setSheetName(e.target.value); setHeaderRowIndex(null); }}>
+              <select value={sheetName} onChange={(e) => { setSheetName(e.target.value); setSelectedRow(null); }}>
                 {workbook.sheetNames.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
@@ -185,13 +179,20 @@ export default function Importar({ actions }) {
             <table>
               <tbody>
                 {sheetRows.slice(0, 20).map((row, idx) => (
-                  <tr key={idx} style={{ cursor: 'pointer' }} onClick={() => confirmHeaderRow(idx)}>
+                  <tr
+                    key={idx}
+                    style={{ cursor: 'pointer', background: selectedRow === idx ? 'var(--line-soft)' : undefined }}
+                    onClick={() => setSelectedRow(idx)}
+                  >
                     <td style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{idx + 1}</td>
                     {row.slice(0, 10).map((c, ci) => <td key={ci}>{c instanceof Date ? c.toLocaleDateString('es-ES') : String(c)}</td>)}
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="modal-actions" style={{ justifyContent: 'flex-start', marginTop: 14 }}>
+            <button className="btn" disabled={selectedRow == null} onClick={confirmImportacion}>Confirmar importación</button>
           </div>
         </div>
       )}
