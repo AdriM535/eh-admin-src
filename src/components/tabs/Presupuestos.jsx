@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../supabaseClient.js';
-import { fmtMoney, fmtDate } from '../../lib/utils.js';
+import { fmtMoney, fmtDate, todayISO } from '../../lib/utils.js';
 import { ESTADOS_PRESUPUESTO } from '../../lib/constants.js';
 
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -68,7 +68,20 @@ function abrirImpresion(p, lineas, cliente, obra) {
 
 export default function Presupuestos({ data, actions, calc, setModal }) {
   const [sendingId, setSendingId] = useState(null);
+  const [aceptandoId, setAceptandoId] = useState(null);
   const presupuestos = data.presupuestos.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  const marcarAceptado = async (p) => {
+    setAceptandoId(p.id);
+    try {
+      const lineas = data.presupuestoLineas.filter((l) => l.presupuestoId === p.id);
+      await actions.savePresupuesto({ ...p, lineas, estado: 'aceptado', fechaAceptacion: p.fechaAceptacion || todayISO() });
+    } catch (err) {
+      alert('No se pudo aceptar el presupuesto: ' + (err.message || err));
+    } finally {
+      setAceptandoId(null);
+    }
+  };
 
   const enviarPorCorreo = async (p, cliente) => {
     const destinatario = window.prompt('¿A qué email se envía el presupuesto?', cliente?.email || p.enviadoA || '');
@@ -115,8 +128,20 @@ export default function Presupuestos({ data, actions, calc, setModal }) {
                   <td>{cliente ? cliente.nombre : '—'}</td>
                   <td>{obra ? obra.nombre : '—'}</td>
                   <td className="num">{fmtMoney(p.total)}</td>
-                  <td>{estadoPill(p.estado)}</td>
                   <td>
+                    {estadoPill(p.estado)}
+                    {p.estado === 'aceptado' && p.fechaAceptacion && (
+                      <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>Aceptado el {fmtDate(p.fechaAceptacion)}</div>
+                    )}
+                  </td>
+                  <td>
+                    {p.estado !== 'aceptado' && (
+                      <>
+                        <button className="btn ok small" disabled={aceptandoId === p.id} onClick={() => marcarAceptado(p)}>
+                          {aceptandoId === p.id ? 'Aceptando…' : '✓ Aceptar'}
+                        </button>{' '}
+                      </>
+                    )}
                     <button className="btn ghost small" onClick={() => abrirImpresion(p, lineas, cliente, obra)}>Imprimir</button>{' '}
                     <button className="btn ghost small" disabled={sendingId === p.id} onClick={() => enviarPorCorreo(p, cliente)}>
                       {sendingId === p.id ? 'Enviando…' : 'Enviar por correo'}

@@ -219,6 +219,7 @@ create table if not exists presupuestos (
   fecha date not null default current_date,
   validez_dias integer default 30,
   estado text not null default 'borrador',        -- borrador | enviado | aceptado | rechazado
+  fecha_aceptacion date,                          -- se rellena sola al marcarlo como "Aceptado"
   notas text,
   total numeric not null default 0,
   enviado_a text,                                 -- email al que se envió por última vez

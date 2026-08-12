@@ -127,6 +127,8 @@ main{flex:1;padding:34px 44px 60px;max-width:1180px;}
 .btn.small{padding:5px 10px;font-size:11.5px;border-radius:5px;}
 .btn.danger{border-color:var(--brick);color:var(--brick);background:transparent;}
 .btn.danger:hover{background:var(--brick);color:#fff;}
+.btn.ok{border-color:var(--green);background:var(--green);}
+.btn.ok:hover{background:#25603F;border-color:#25603F;}
 .btn:disabled{opacity:0.55;cursor:not-allowed;}
 
 /* ---------- LEDGER STRIP (dashboard) ---------- */

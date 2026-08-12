@@ -9,10 +9,12 @@ const emptyLinea = () => ({ concepto: '', cantidad: 1, precioUnitario: '', impor
 export default function PresupuestoForm({ initial, obras, clientes, servicios, presupuestoLineas, onSave, onClose }) {
   const initialLineas = initial ? presupuestoLineas.filter((l) => l.presupuestoId === initial.id).sort((a, b) => a.orden - b.orden) : [];
   const [f, setF] = useState(
-    initial || { clienteId: clientes[0]?.id || '', obraId: '', numero: '', fecha: todayISO(), validezDias: 30, estado: 'borrador', notas: '' }
+    initial || { clienteId: clientes[0]?.id || '', obraId: '', numero: '', fecha: todayISO(), validezDias: 30, estado: 'borrador', fechaAceptacion: '', notas: '' }
   );
   const [lineas, setLineas] = useState(initialLineas.length > 0 ? initialLineas : [emptyLinea()]);
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
+  const marcarAceptado = () => setF((prev) => ({ ...prev, estado: 'aceptado', fechaAceptacion: prev.fechaAceptacion || todayISO() }));
+  const setEstado = (v) => setF((prev) => ({ ...prev, estado: v, fechaAceptacion: v === 'aceptado' ? (prev.fechaAceptacion || todayISO()) : prev.fechaAceptacion }));
 
   const setLinea = (idx, k, v) => {
     setLineas((prev) => {
@@ -57,14 +59,26 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
         <Field label="Fecha"><input type="date" value={f.fecha} onChange={(e) => set('fecha', e.target.value)} /></Field>
         <Field label="Validez (días)"><input type="number" value={f.validezDias} onChange={(e) => set('validezDias', e.target.value)} /></Field>
         <Field label="Estado">
-          <select value={f.estado} onChange={(e) => set('estado', e.target.value)}>
+          <select value={f.estado} onChange={(e) => setEstado(e.target.value)}>
             {ESTADOS_PRESUPUESTO.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
           </select>
         </Field>
       </div>
-      {f.estado === 'aceptado' && (
-        <div className="desc" style={{ marginTop: -8, marginBottom: 10 }}>
-          Al guardar como "Aceptado" pasa directo a Obras: {f.obraId ? 'se activará la obra vinculada.' : 'se creará una obra nueva automáticamente.'}
+
+      {f.estado === 'aceptado' ? (
+        <div className="grid3">
+          <Field label="Fecha de aceptación">
+            <input type="date" value={f.fechaAceptacion || ''} onChange={(e) => set('fechaAceptacion', e.target.value)} />
+          </Field>
+          <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center' }}>
+            <div className="desc" style={{ margin: 0 }}>
+              ✓ Aceptado — al guardar {f.obraId ? 'se activará la obra vinculada.' : 'se creará una obra nueva automáticamente.'}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginTop: -8, marginBottom: 14 }}>
+          <button type="button" className="btn ok" onClick={marcarAceptado}>✓ Marcar como aceptado</button>
         </div>
       )}
 
