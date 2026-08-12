@@ -69,11 +69,11 @@ export default function Obras({ data, actions, calc, setModal }) {
           <thead>
             <tr>
               <th>Obra</th><th>Cliente</th><th>Ciudad</th><th>Estado</th>
-              <th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Margen</th><th></th>
+              <th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Indirecto</th><th>Margen real</th><th></th>
             </tr>
           </thead>
           <tbody>
-            {obras.length === 0 && <tr><td colSpan="9" className="empty">Sin obras registradas.</td></tr>}
+            {obras.length === 0 && <tr><td colSpan="10" className="empty">Sin obras registradas.</td></tr>}
             {obras.map((o) => {
               const cli = calc.clienteById(o.clienteId);
               const open = expanded === o.id;
@@ -87,7 +87,8 @@ export default function Obras({ data, actions, calc, setModal }) {
                     <td className="num">{fmtMoney(o.stats.totalFacturado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalCobrado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalGastos)}</td>
-                    <td className={'num ' + (o.stats.margen >= 0 ? 'pos' : 'neg')}>{fmtMoney(o.stats.margen)}</td>
+                    <td className="num" title="Parte de los gastos de operación (papelería, impuestos, personal admin.) que le corresponde a esta obra">{fmtMoney(o.stats.costeIndirecto)}</td>
+                    <td className={'num ' + (o.stats.margenReal >= 0 ? 'pos' : 'neg')} title={`Margen directo (sin indirecto): ${fmtMoney(o.stats.margen)}`}>{fmtMoney(o.stats.margenReal)}</td>
                     <td>
                       <button className="btn ghost small" onClick={() => setExpanded(open ? null : o.id)}>{open ? 'Ocultar' : 'Detalle'}</button>{' '}
                       <button className="btn ghost small" onClick={() => setModal({ type: 'obra', initial: o })}>Editar</button>{' '}
@@ -96,9 +97,22 @@ export default function Obras({ data, actions, calc, setModal }) {
                   </tr>
                   {open && (
                     <tr>
-                      <td colSpan="9" style={{ background: 'var(--line-soft)' }}>
+                      <td colSpan="10" style={{ background: 'var(--line-soft)' }}>
                         <div style={{ padding: '8px 4px', fontSize: 12.5 }}>
                           {o.stats.pendienteCobro > 0 && <div style={{ marginBottom: 8 }}><span className="pill brick">Pendiente de cobro: {fmtMoney(o.stats.pendienteCobro)}</span></div>}
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontWeight: 600 }}>
+                            <span>Margen directo (facturado − gasto directo)</span>
+                            <span>{fmtMoney(o.stats.margen)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
+                            <span>− Gasto indirecto prorrateado (papelería, impuestos, personal admin.)</span>
+                            <span>{fmtMoney(o.stats.costeIndirecto)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0 8px', fontWeight: 700, borderTop: '1px solid var(--line)' }}>
+                            <span>= Margen real</span>
+                            <span>{fmtMoney(o.stats.margenReal)}</span>
+                          </div>
 
                           <b>Facturas de venta ({o.stats.ventas.length})</b>
                           {o.stats.ventas.length === 0 && <div className="empty">Ninguna</div>}

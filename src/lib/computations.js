@@ -1,4 +1,4 @@
-import { MES_CORTO } from './constants.js';
+import { MES_CORTO, CATEGORIAS_INDIRECTAS } from './constants.js';
 
 // Todos los valores derivados de `data` que se reutilizan entre pestañas.
 // Se recalcula en cada render (el volumen de datos de esta app es pequeño).
@@ -10,6 +10,61 @@ export function computeAll(data) {
   const personalById = (id) => data.personal.find((p) => p.id === id);
 
   const sum = (arr, f) => arr.reduce((s, x) => s + (Number(f(x)) || 0), 0);
+
+  // ---------------- prorrateo de gastos indirectos entre obras ----------------
+  // Las facturas de compra sin obra asignada y con una categoría "indirecta"
+  // (papelería, impuestos, personal administrativo…) son gasto de operación
+  // de toda la empresa. Cada mes se reparten entre las obras que tuvieron
+  // movimiento directo ese mes (facturaron o gastaron algo), en proporción
+  // a lo que facturó cada una — así el margen de una obra no es solo su
+  // coste directo, sino lo que realmente le corresponde del gasto general.
+  const gastosIndirectosPorMes = {}; // ym -> total del mes
+  const indirectoPorObraMes = {}; // `${obraId}|${ym}` -> importe asignado
+  const indirectoPorObraTotal = {}; // obraId -> importe acumulado (todos los meses)
+  let gastosIndirectosSinAsignar = 0; // meses con gasto indirecto pero ninguna obra con movimiento
+
+  data.facturasCompra
+    .filter((f) => !f.obraId && CATEGORIAS_INDIRECTAS.includes(f.categoriaGeneral))
+    .forEach((f) => {
+      const ym = (f.fecha || '').slice(0, 7);
+      if (!ym) return;
+      gastosIndirectosPorMes[ym] = (gastosIndirectosPorMes[ym] || 0) + Number(f.total || 0);
+    });
+
+  Object.entries(gastosIndirectosPorMes).forEach(([ym, totalIndirecto]) => {
+    const facturadoPorObra = {};
+    data.facturasVenta
+      .filter((f) => f.obraId && (f.fechaExpedicion || '').slice(0, 7) === ym)
+      .forEach((f) => { facturadoPorObra[f.obraId] = (facturadoPorObra[f.obraId] || 0) + Number(f.total || 0); });
+
+    const obrasConMovimiento = new Set(Object.keys(facturadoPorObra));
+    data.facturasCompra
+      .filter((f) => f.obraId && (f.fecha || '').slice(0, 7) === ym)
+      .forEach((f) => obrasConMovimiento.add(f.obraId));
+
+    const totalFacturadoMes = Object.values(facturadoPorObra).reduce((s, v) => s + v, 0);
+
+    if (totalFacturadoMes > 0) {
+      obrasConMovimiento.forEach((obraId) => {
+        const importe = totalIndirecto * ((facturadoPorObra[obraId] || 0) / totalFacturadoMes);
+        indirectoPorObraMes[`${obraId}|${ym}`] = importe;
+        indirectoPorObraTotal[obraId] = (indirectoPorObraTotal[obraId] || 0) + importe;
+      });
+    } else if (obrasConMovimiento.size > 0) {
+      // Nadie facturó ese mes pero hubo gasto directo en alguna obra: se
+      // reparte a partes iguales entre esas obras como respaldo.
+      const importe = totalIndirecto / obrasConMovimiento.size;
+      obrasConMovimiento.forEach((obraId) => {
+        indirectoPorObraMes[`${obraId}|${ym}`] = importe;
+        indirectoPorObraTotal[obraId] = (indirectoPorObraTotal[obraId] || 0) + importe;
+      });
+    } else {
+      // Ninguna obra tuvo movimiento ese mes: no hay a quién asignárselo.
+      gastosIndirectosSinAsignar += totalIndirecto;
+    }
+  });
+
+  const gastosIndirectosTotal = sum(Object.values(gastosIndirectosPorMes), (v) => v);
 
   // ---------------- estadísticas por obra ----------------
   const obraStats = (obraId) => {
@@ -29,12 +84,17 @@ export function computeAll(data) {
     const costeIncidenciasEmpleado = sum(incidenciasObra.filter((i) => i.asumidoEmpleado), (i) => i.coste);
     const totalGastos = totalCompras + costeIncidenciasEmpresa;
 
+    const costeIndirecto = indirectoPorObraTotal[obraId] || 0;
+    const totalGastosConIndirecto = totalGastos + costeIndirecto;
+
     const margen = totalFacturado - totalGastos;
+    const margenReal = totalFacturado - totalGastosConIndirecto;
 
     return {
       ventas, compras, abonosObra, incidenciasObra,
       totalFacturado, totalCobrado, totalCobradoFacturas, totalAbonos, pendienteCobro,
       totalCompras, costeIncidenciasEmpresa, costeIncidenciasEmpleado, totalGastos, margen,
+      costeIndirecto, totalGastosConIndirecto, margenReal,
     };
   };
 
@@ -80,8 +140,13 @@ export function computeAll(data) {
       numObrasNuevas: obrasNuevasMes.length,
       cobrosPorMetodo: desgloseMetodo(ventasMes, 'metodoCobro'),
       gastosPorMetodo: desgloseMetodo(comprasMes, 'metodoPago'),
+      gastosIndirectos: gastosIndirectosPorMes[ym] || 0,
     };
   };
+
+  // Cuánto de los gastos indirectos de un mes concreto absorbió una obra en
+  // concreto (para desglosarlo en el detalle de la obra).
+  const indirectoObraMes = (obraId, ym) => indirectoPorObraMes[`${obraId}|${ym}`] || 0;
 
   // ---------------- panorama de un año completo (acumulado + por mes) ----------------
   const statsForYear = (year) => {
@@ -91,9 +156,10 @@ export function computeAll(data) {
     });
     const ingresos = meses.reduce((s, m) => s + m.ingresos, 0);
     const gastos = meses.reduce((s, m) => s + m.gastos, 0);
+    const gastosIndirectos = meses.reduce((s, m) => s + m.gastosIndirectos, 0);
     const obrasNuevas = meses.reduce((s, m) => s + m.numObrasNuevas, 0);
     const max = Math.max(1, ...meses.map((m) => Math.max(m.ingresos, m.gastos)));
-    return { year, meses, ingresos, gastos, margen: ingresos - gastos, obrasNuevas, max };
+    return { year, meses, ingresos, gastos, gastosIndirectos, margen: ingresos - gastos, obrasNuevas, max };
   };
 
   const obrasActivas = obrasConStats.filter((o) => o.estado === 'activa');
@@ -126,7 +192,8 @@ export function computeAll(data) {
     currentYear,
     clienteById, obraById, personalById,
     obraStats, obrasConStats, obrasActivas,
-    statsForMonth, statsForYear,
+    statsForMonth, statsForYear, indirectoObraMes,
+    gastosIndirectosTotal, gastosIndirectosSinAsignar,
     pendienteCobroTotal, pendientePagoTotal, totalEnB,
     entregaStats, entregasConStats, cajaSaldo, cajaPendienteJustificar, ingresosEfectivo, gastosEfectivoDirectos, totalEntregasEfectivo,
   };

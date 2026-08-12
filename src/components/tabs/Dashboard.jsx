@@ -26,6 +26,7 @@ export default function Dashboard({ data, calc, setTab }) {
   const {
     pendienteCobroTotal, pendientePagoTotal, totalEnB, obrasActivas,
     cajaSaldo, cajaPendienteJustificar, currentYear,
+    gastosIndirectosSinAsignar,
   } = calc;
 
   const hoy = new Date();
@@ -127,6 +128,18 @@ export default function Dashboard({ data, calc, setTab }) {
           <DeltaBadge curr={ys.obrasNuevas} prev={ysPrev.obrasNuevas} bueno={true} />
         </div>
       </div>
+      <div className="ledger" style={{ marginTop: -18 }}>
+        <div className="cell" title="Papelería, impuestos y personal administrativo: ya repartido entre las obras que tuvieron movimiento cada mes">
+          <div className="lbl">Gasto indirecto prorrateado en {aYear}</div>
+          <div className="val">{fmtMoney(ys.gastosIndirectos)}</div>
+        </div>
+        {gastosIndirectosSinAsignar > 0 && (
+          <div className="cell warn" style={{ gridColumn: 'span 3' }} title="Meses con gasto indirecto (papelería, impuestos, personal admin.) en los que ninguna obra tuvo movimiento, así que no se pudo repartir">
+            <div className="lbl">Gasto indirecto sin asignar (histórico)</div>
+            <div className="val">{fmtMoney(gastosIndirectosSinAsignar)}</div>
+          </div>
+        )}
+      </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: '18px 18px 8px' }}>
         <div style={{ display: 'flex', gap: 14, fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 16, flexWrap: 'wrap' }}>
@@ -158,7 +171,7 @@ export default function Dashboard({ data, calc, setTab }) {
       ) : (
         <div className="tblwrap">
           <table>
-            <thead><tr><th>Obra</th><th>Cliente</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Margen</th></tr></thead>
+            <thead><tr><th>Obra</th><th>Cliente</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Margen real</th></tr></thead>
             <tbody>
               {obrasActivas.map((o) => {
                 const cli = calc.clienteById(o.clienteId);
@@ -168,8 +181,8 @@ export default function Dashboard({ data, calc, setTab }) {
                     <td>{cli ? cli.nombre : '—'}</td>
                     <td className="num">{fmtMoney(o.stats.totalFacturado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalCobrado)}</td>
-                    <td className="num">{fmtMoney(o.stats.totalGastos)}</td>
-                    <td className={'num ' + (o.stats.margen >= 0 ? 'pos' : 'neg')}>{fmtMoney(o.stats.margen)}</td>
+                    <td className="num">{fmtMoney(o.stats.totalGastos + o.stats.costeIndirecto)}</td>
+                    <td className={'num ' + (o.stats.margenReal >= 0 ? 'pos' : 'neg')} title={`Margen directo (sin indirecto): ${fmtMoney(o.stats.margen)}`}>{fmtMoney(o.stats.margenReal)}</td>
                   </tr>
                 );
               })}
