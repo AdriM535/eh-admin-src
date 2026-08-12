@@ -91,7 +91,7 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                     <td className="num">{fmtMoney(o.stats.totalFacturado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalCobrado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalGastos)}</td>
-                    <td className="num" title="Parte de los gastos de operación (papelería, impuestos, personal admin.) que le corresponde a esta obra">{fmtMoney(o.stats.costeIndirecto)}</td>
+                    <td className="num" title="Parte de los gastos de operación (papelería, impuestos, personal admin. y nóminas) que le corresponde a esta obra">{fmtMoney(o.stats.costeIndirecto)}</td>
                     <td className={'num ' + (o.stats.margenReal >= 0 ? 'pos' : 'neg')} title={`Margen directo (sin indirecto): ${fmtMoney(o.stats.margen)}`}>{fmtMoney(o.stats.margenReal)}</td>
                     <td>
                       <button className="btn ghost small" onClick={() => setExpanded(open ? null : o.id)}>{open ? 'Ocultar' : 'Detalle'}</button>{' '}
@@ -110,7 +110,7 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                             <span>{fmtMoney(o.stats.margen)}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                            <span>− Gasto indirecto prorrateado (papelería, impuestos, personal admin.)</span>
+                            <span>− Gasto indirecto prorrateado (papelería, impuestos, personal admin. y nóminas)</span>
                             <span>{fmtMoney(o.stats.costeIndirecto)}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0 8px', fontWeight: 700, borderTop: '1px solid var(--line)' }}>

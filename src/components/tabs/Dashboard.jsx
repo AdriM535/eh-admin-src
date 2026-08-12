@@ -134,7 +134,7 @@ export default function Dashboard({ data, calc, setTab }) {
           <div className="val">{fmtMoney(ys.gastosIndirectos)}</div>
         </div>
         {gastosIndirectosSinAsignar > 0 && (
-          <div className="cell warn" style={{ gridColumn: 'span 3' }} title="Meses con gasto indirecto (papelería, impuestos, personal admin.) en los que ninguna obra tuvo movimiento, así que no se pudo repartir">
+          <div className="cell warn" style={{ gridColumn: 'span 3' }} title="Meses con gasto indirecto (papelería, impuestos, personal admin. y nóminas) en los que ninguna obra tuvo movimiento, así que no se pudo repartir">
             <div className="lbl">Gasto indirecto sin asignar (histórico)</div>
             <div className="val">{fmtMoney(gastosIndirectosSinAsignar)}</div>
           </div>

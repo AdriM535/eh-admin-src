@@ -13,11 +13,12 @@ export function computeAll(data) {
 
   // ---------------- prorrateo de gastos indirectos entre obras ----------------
   // Las facturas de compra sin obra asignada y con una categoría "indirecta"
-  // (papelería, impuestos, personal administrativo…) son gasto de operación
-  // de toda la empresa. Cada mes se reparten entre las obras que tuvieron
-  // movimiento directo ese mes (facturaron o gastaron algo), en proporción
-  // a lo que facturó cada una — así el margen de una obra no es solo su
-  // coste directo, sino lo que realmente le corresponde del gasto general.
+  // (papelería, impuestos, personal administrativo…), más el total de
+  // nóminas del mes, son gasto de operación de toda la empresa. Cada mes se
+  // reparten entre las obras que tuvieron movimiento directo ese mes
+  // (facturaron o gastaron algo), en proporción a lo que facturó cada una —
+  // así el margen de una obra no es solo su coste directo, sino lo que
+  // realmente le corresponde del gasto general.
   const gastosIndirectosPorMes = {}; // ym -> total del mes
   const indirectoPorObraMes = {}; // `${obraId}|${ym}` -> importe asignado
   const indirectoPorObraTotal = {}; // obraId -> importe acumulado (todos los meses)
@@ -30,6 +31,12 @@ export function computeAll(data) {
       if (!ym) return;
       gastosIndirectosPorMes[ym] = (gastosIndirectosPorMes[ym] || 0) + Number(f.total || 0);
     });
+
+  data.nominas.forEach((n) => {
+    const ym = (n.fechaPago || n.periodoFin || '').slice(0, 7);
+    if (!ym) return;
+    gastosIndirectosPorMes[ym] = (gastosIndirectosPorMes[ym] || 0) + Number(n.total || 0);
+  });
 
   Object.entries(gastosIndirectosPorMes).forEach(([ym, totalIndirecto]) => {
     const facturadoPorObra = {};
