@@ -62,6 +62,11 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
           </select>
         </Field>
       </div>
+      {f.estado === 'aceptado' && (
+        <div className="desc" style={{ marginTop: -8, marginBottom: 10 }}>
+          Al guardar como "Aceptado" pasa directo a Obras: {f.obraId ? 'se activará la obra vinculada.' : 'se creará una obra nueva automáticamente.'}
+        </div>
+      )}
 
       <Field label="Líneas del presupuesto">
         <div className="lineitems">

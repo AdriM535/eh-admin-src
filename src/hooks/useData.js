@@ -265,7 +265,30 @@ export function useData(userId) {
   const savePresupuesto = async (p) => {
     const { lineas, ...cabecera } = p;
     const total = (lineas || []).reduce((s, l) => s + Number(l.importe || 0), 0);
-    const saved = await saveRow('presupuestos', 'presupuestos', { ...cabecera, total });
+
+    // Al aceptar un presupuesto, pasa directo a Obras: si ya tenía una obra
+    // vinculada (todavía "en presupuesto") se activa; si no tenía ninguna,
+    // se crea una nueva a partir del cliente/número del presupuesto.
+    let obraId = cabecera.obraId || null;
+    if (cabecera.estado === 'aceptado') {
+      if (obraId) {
+        const obra = dataRef.current.obras.find((o) => o.id === obraId);
+        if (obra && obra.estado === 'presupuesto') {
+          await updateRow('obras', 'obras', obraId, { estado: 'activa' });
+        }
+      } else {
+        const cliente = dataRef.current.clientes.find((c) => c.id === cabecera.clienteId);
+        const nuevaObra = await insertRow('obras', 'obras', {
+          nombre: cabecera.numero || (cliente ? cliente.nombre : 'Obra sin nombre'),
+          codigo: nextObraCodigo(dataRef.current.obras),
+          clienteId: cabecera.clienteId || null,
+          estado: 'activa',
+        });
+        obraId = nuevaObra.id;
+      }
+    }
+
+    const saved = await saveRow('presupuestos', 'presupuestos', { ...cabecera, obraId, total });
 
     if (cabecera.id) {
       await supabase.from('presupuesto_lineas').delete().eq('presupuesto_id', saved.id);
