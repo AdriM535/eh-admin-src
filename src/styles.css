@@ -42,6 +42,8 @@ body{
   border-bottom:1px solid var(--line);
   margin-bottom:10px;
 }
+.hamburger{display:none;}
+.navfoot-mobile{display:none;}
 .brand .mark{
   font-family:'Aptos Display','Aptos',Inter,'Segoe UI',sans-serif;
   font-weight:700;
@@ -362,11 +364,41 @@ td.num.pos{color:var(--green);}
 /* ---------- RESPONSIVE / MÓVIL ---------- */
 @media (max-width:860px){
   .app{flex-direction:column;}
-  .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;padding:14px 0 10px;position:sticky;top:0;z-index:40;}
-  .brand{border-bottom:none;padding:0 16px 8px;width:100%;}
-  nav{flex-direction:row;flex-wrap:wrap;width:100%;overflow-x:auto;}
-  .navbtn{padding:8px 12px;border-left:none;border-bottom:3px solid transparent;white-space:nowrap;}
-  .navbtn.active{border-left:none;border-bottom:3px solid var(--accent);}
+  .sidebar{width:100%;padding:0;position:sticky;top:0;z-index:40;}
+  .brand{border-bottom:1px solid var(--line);padding:10px 16px;margin-bottom:0;}
+  .brand .sub{display:none;}
+  .hamburger{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-left:auto;
+    background:none;
+    border:none;
+    color:var(--ink);
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    padding:6px 4px;
+    cursor:pointer;
+  }
+  nav{
+    display:none;
+    position:absolute;
+    top:100%;
+    left:0;
+    right:0;
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 10px 24px rgba(0,0,0,0.15);
+    max-height:calc(100vh - 53px);
+    overflow-y:auto;
+    margin-top:0;
+    z-index:39;
+  }
+  nav.open{display:flex;flex-direction:column;}
+  .navbtn{white-space:normal;}
+  .navfoot-mobile{display:block;padding:14px 20px 18px;border-top:1px solid var(--line);margin-top:6px;}
+  .export-desktop{display:none;}
   .sidebar-foot{display:none;}
   main{padding:20px 16px 40px;}
   .pagehead h1{font-size:21px;}
