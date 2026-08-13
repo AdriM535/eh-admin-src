@@ -122,6 +122,7 @@ function Operacion({ user, onSignOut }) {
           servicios={data.servicios}
           presupuestoLineas={data.presupuestoLineas}
           onSave={wrap(actions.savePresupuesto)}
+          onCreateCliente={actions.saveCliente}
           onClose={() => setModal(null)}
         />
       )}

@@ -135,7 +135,14 @@ export function computeAll(data) {
     const nominasMes = data.nominas.filter((n) => (n.fechaPago || n.periodoFin || '').slice(0, 7) === ym);
     const obrasNuevasMes = data.obras.filter((o) => fechaAltaObra(o) === ym);
 
-    const ingresos = sum(ventasMes, (f) => f.total);
+    // Facturado declarado vs. cobrado en B: se muestran por separado porque
+    // el "en B" es dinero real cobrado pero no declarado, así que no debe
+    // confundirse con la facturación oficial — el total de ingresos es la
+    // suma de ambos.
+    const abonosMesEnB = data.abonos.filter((a) => a.enB && (a.fecha || '').slice(0, 7) === ym);
+    const facturado = sum(ventasMes.filter((f) => !f.enB), (f) => f.total);
+    const cobradoEnB = sum(ventasMes.filter((f) => f.enB), (f) => f.total) + sum(abonosMesEnB, (a) => a.importe);
+    const ingresos = facturado + cobradoEnB;
     const gastosCompras = sum(comprasMes, (f) => f.total);
     const gastosNominas = sum(nominasMes, (n) => n.total);
     const gastos = gastosCompras + gastosNominas;
@@ -143,7 +150,7 @@ export function computeAll(data) {
 
     return {
       ym, ventasMes, comprasMes, nominasMes, obrasNuevasMes,
-      ingresos, gastosCompras, gastosNominas, gastos, margen,
+      facturado, cobradoEnB, ingresos, gastosCompras, gastosNominas, gastos, margen,
       numObrasNuevas: obrasNuevasMes.length,
       cobrosPorMetodo: desgloseMetodo(ventasMes, 'metodoCobro'),
       gastosPorMetodo: desgloseMetodo(comprasMes, 'metodoPago'),

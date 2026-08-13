@@ -75,8 +75,12 @@ export default function Dashboard({ data, calc, setTab }) {
         </div>
       </div>
       <div className="ledger">
-        <div className="cell ok"><div className="lbl">Facturado en {MESES[mMonth - 1]}</div><div className="val">{fmtMoney(ms.ingresos)}</div></div>
+        <div className="cell ok"><div className="lbl">Facturado en {MESES[mMonth - 1]}</div><div className="val">{fmtMoney(ms.facturado)}</div></div>
+        <div className="cell" title="Dinero real cobrado pero no declarado"><div className="lbl">Cobrado en B en {MESES[mMonth - 1]}</div><div className="val">{fmtMoney(ms.cobradoEnB)}</div></div>
+        <div className="cell"><div className="lbl">Total ingresos en {MESES[mMonth - 1]}</div><div className="val">{fmtMoney(ms.ingresos)}</div></div>
         <div className="cell warn"><div className="lbl">Gastos en {MESES[mMonth - 1]}</div><div className="val">{fmtMoney(ms.gastos)}</div></div>
+      </div>
+      <div className="ledger" style={{ marginTop: -18 }}>
         <div className="cell"><div className="lbl">Margen del mes</div><div className="val">{fmtMoney(ms.margen)}</div></div>
         <div className="cell" style={{ cursor: 'pointer' }} onClick={() => setTab && setTab('obras')}><div className="lbl">Obras nuevas este mes</div><div className="val">{ms.numObrasNuevas}</div></div>
       </div>

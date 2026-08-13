@@ -283,6 +283,7 @@ export function useData(userId) {
           codigo: nextObraCodigo(dataRef.current.obras),
           clienteId: cabecera.clienteId || null,
           estado: 'activa',
+          fechaInicio: cabecera.fechaAceptacion || cabecera.fecha || null,
         });
         obraId = nuevaObra.id;
       }
@@ -397,8 +398,12 @@ export function useData(userId) {
       const r = rows[i];
       try {
         const clienteId = await findOrCreateByName('clientes', 'clientes', clientesCache, r.clienteNombre, r.clienteNif ? { nif: r.clienteNif } : {});
+        // fechaInicio = fecha de la factura: así "obras nuevas este mes" en
+        // Panorama agrupa la obra en el mes real en que se hizo el trabajo,
+        // no en el mes en que se importó el Excel.
         const obraExtra = { estado: 'activa', codigo: nextObraCodigo(obrasCache) };
         if (clienteId) obraExtra.clienteId = clienteId;
+        if (r.fechaExpedicion) obraExtra.fechaInicio = r.fechaExpedicion;
         const obraId = await findOrCreateByName('obras', 'obras', obrasCache, r.obraNombre, obraExtra);
         await insertRow('facturas_venta', 'facturasVenta', {
           obraId, clienteId, serie: r.serie || '', numero: r.numero || '',
@@ -428,7 +433,9 @@ export function useData(userId) {
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
       try {
-        const obraId = await findOrCreateByName('obras', 'obras', obrasCache, g.obraNombre, { estado: 'activa', codigo: nextObraCodigo(obrasCache) });
+        const obraId = await findOrCreateByName('obras', 'obras', obrasCache, g.obraNombre, {
+          estado: 'activa', codigo: nextObraCodigo(obrasCache), ...(g.fecha ? { fechaInicio: g.fecha } : {}),
+        });
         let personalId = null;
         if (!obraId && g.categoriaGeneral === 'autonomo' && g.proveedor) {
           personalId = await findOrCreateByName('personal', 'personal', personalCache, g.proveedor, { tipo: 'autonomo' });

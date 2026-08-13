@@ -6,7 +6,7 @@ import { ESTADOS_PRESUPUESTO } from '../../lib/constants.js';
 
 const emptyLinea = () => ({ concepto: '', cantidad: 1, precioUnitario: '', importe: 0 });
 
-export default function PresupuestoForm({ initial, obras, clientes, servicios, presupuestoLineas, onSave, onClose }) {
+export default function PresupuestoForm({ initial, obras, clientes, servicios, presupuestoLineas, onSave, onCreateCliente, onClose }) {
   const initialLineas = initial ? presupuestoLineas.filter((l) => l.presupuestoId === initial.id).sort((a, b) => a.orden - b.orden) : [];
   const [f, setF] = useState(
     initial || { clienteId: clientes[0]?.id || '', obraId: '', numero: '', fecha: todayISO(), validezDias: 30, estado: 'borrador', fechaAceptacion: '', notas: '' }
@@ -15,6 +15,23 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
   const marcarAceptado = () => setF((prev) => ({ ...prev, estado: 'aceptado', fechaAceptacion: prev.fechaAceptacion || todayISO() }));
   const setEstado = (v) => setF((prev) => ({ ...prev, estado: v, fechaAceptacion: v === 'aceptado' ? (prev.fechaAceptacion || todayISO()) : prev.fechaAceptacion }));
+
+  const [nuevoClienteNombre, setNuevoClienteNombre] = useState(null); // null = oculto; string = mostrando el campo
+  const [creandoCliente, setCreandoCliente] = useState(false);
+  const crearCliente = async () => {
+    const nombre = (nuevoClienteNombre || '').trim();
+    if (!nombre) { alert('Escribe el nombre del cliente'); return; }
+    setCreandoCliente(true);
+    try {
+      const creado = await onCreateCliente({ nombre });
+      set('clienteId', creado.id);
+      setNuevoClienteNombre(null);
+    } catch (err) {
+      alert('No se pudo crear el cliente: ' + (err.message || err));
+    } finally {
+      setCreandoCliente(false);
+    }
+  };
 
   const setLinea = (idx, k, v) => {
     setLineas((prev) => {
@@ -42,10 +59,31 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
     <Modal title={initial && initial.id ? 'Editar presupuesto' : 'Nuevo presupuesto'} wide onClose={onClose}>
       <div className="grid3">
         <Field label="Cliente">
-          <select value={f.clienteId} onChange={(e) => set('clienteId', e.target.value)}>
-            <option value="">— Sin asignar —</option>
-            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-          </select>
+          {nuevoClienteNombre == null ? (
+            <>
+              <select value={f.clienteId} onChange={(e) => set('clienteId', e.target.value)}>
+                <option value="">— Sin asignar —</option>
+                {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+              {onCreateCliente && (
+                <button type="button" className="btn ghost small" style={{ marginTop: 6 }} onClick={() => setNuevoClienteNombre('')}>
+                  + Cliente nuevo
+                </button>
+              )}
+            </>
+          ) : (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input
+                autoFocus
+                value={nuevoClienteNombre}
+                onChange={(e) => setNuevoClienteNombre(e.target.value)}
+                placeholder="Nombre del cliente"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); crearCliente(); } }}
+              />
+              <button type="button" className="btn small" disabled={creandoCliente} onClick={crearCliente}>{creandoCliente ? '…' : 'Crear'}</button>
+              <button type="button" className="btn ghost small" onClick={() => setNuevoClienteNombre(null)}>✕</button>
+            </div>
+          )}
         </Field>
         <Field label="Obra (opcional)">
           <select value={f.obraId} onChange={(e) => set('obraId', e.target.value)}>
