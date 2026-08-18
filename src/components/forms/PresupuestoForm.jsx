@@ -9,7 +9,7 @@ const emptyLinea = () => ({ concepto: '', cantidad: 1, precioUnitario: '', impor
 export default function PresupuestoForm({ initial, obras, clientes, servicios, presupuestoLineas, onSave, onCreateCliente, onClose }) {
   const initialLineas = initial ? presupuestoLineas.filter((l) => l.presupuestoId === initial.id).sort((a, b) => a.orden - b.orden) : [];
   const [f, setF] = useState(
-    initial || { clienteId: clientes[0]?.id || '', obraId: '', numero: '', fecha: todayISO(), validezDias: 30, estado: 'borrador', fechaAceptacion: '', notas: '' }
+    initial || { clienteId: clientes[0]?.id || '', obraId: '', numero: '', fecha: todayISO(), validezDias: 30, estado: 'borrador', fechaAceptacion: '', iva: 21, notas: '' }
   );
   const [lineas, setLineas] = useState(initialLineas.length > 0 ? initialLineas : [emptyLinea()]);
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
@@ -52,7 +52,10 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
     const precio = Number(s.precioUnitario) || 0;
     setLineas((prev) => [...prev, { concepto: s.nombre, cantidad: 1, precioUnitario: precio, importe: precio }]);
   };
-  const total = lineas.reduce((s, l) => s + (Number(l.importe) || 0), 0);
+  const base = lineas.reduce((s, l) => s + (Number(l.importe) || 0), 0);
+  const ivaPct = Number(f.iva) || 0;
+  const cuotaIva = Math.round(base * (ivaPct / 100) * 100) / 100;
+  const total = base + cuotaIva;
   const serviciosActivos = (servicios || []).filter((s) => s.activo !== false);
 
   return (
@@ -96,6 +99,9 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
       <div className="grid3">
         <Field label="Fecha"><input type="date" value={f.fecha} onChange={(e) => set('fecha', e.target.value)} /></Field>
         <Field label="Validez (días)"><input type="number" value={f.validezDias} onChange={(e) => set('validezDias', e.target.value)} /></Field>
+        <Field label="IVA %"><input type="number" value={f.iva} onChange={(e) => set('iva', e.target.value)} /></Field>
+      </div>
+      <div className="grid3">
         <Field label="Estado">
           <select value={f.estado} onChange={(e) => setEstado(e.target.value)}>
             {ESTADOS_PRESUPUESTO.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
@@ -148,7 +154,10 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
         </div>
       </Field>
 
-      <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, margin: '10px 0' }}>Total: {total.toFixed(2)} €</div>
+      <div style={{ textAlign: 'right', fontSize: 13, margin: '10px 0 2px', color: 'var(--ink-soft)' }}>
+        Base imponible: {base.toFixed(2)} € &nbsp;+&nbsp; IVA ({ivaPct}%): {cuotaIva.toFixed(2)} €
+      </div>
+      <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, margin: '0 0 10px' }}>Total: {total.toFixed(2)} €</div>
 
       <Field label="Notas / condiciones"><textarea value={f.notas || ''} onChange={(e) => set('notas', e.target.value)} /></Field>
       <div className="modal-actions">

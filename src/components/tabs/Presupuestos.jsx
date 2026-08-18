@@ -5,6 +5,18 @@ import { ESTADOS_PRESUPUESTO } from '../../lib/constants.js';
 
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Dirección del cliente a partir de los campos estructurados (calle, número...)
+// o, si no los tiene rellenos, del campo "dirección" antiguo de texto libre.
+function direccionCliente(c) {
+  if (!c) return '';
+  if (c.calle) {
+    const linea1 = [c.calle, c.numero, c.interior].filter(Boolean).join(' ');
+    const linea2 = [c.cp, c.municipio, c.provincia].filter(Boolean).join(' ');
+    return [linea1, linea2].filter(Boolean).join(', ');
+  }
+  return c.direccion || '';
+}
+
 function abrirImpresion(p, lineas, cliente, obra) {
   const win = window.open('', '_blank');
   if (!win) return;
@@ -13,17 +25,25 @@ function abrirImpresion(p, lineas, cliente, obra) {
       (l) => `<tr><td>${escapeHtml(l.concepto)}</td><td style="text-align:right">${escapeHtml(l.cantidad)}</td><td style="text-align:right">${fmtMoney(l.precioUnitario)}</td><td style="text-align:right">${fmtMoney(l.importe)}</td></tr>`
     )
     .join('');
+  const base = lineas.reduce((s, l) => s + (Number(l.importe) || 0), 0);
+  const ivaPct = Number(p.iva ?? 21);
+  const cuotaIva = base * (ivaPct / 100);
+  const logoUrl = `${window.location.origin}/logo.png`;
   win.document.write(`
     <html><head><title>Presupuesto ${escapeHtml(p.numero || '')}</title>
     <meta charset="utf-8">
     <style>
       body{font-family:Arial,Helvetica,sans-serif;color:#32363B;padding:40px;max-width:760px;margin:0 auto;}
-      h1{font-size:22px;margin-bottom:2px;}
+      .header{display:flex;align-items:center;gap:16px;margin-bottom:6px;}
+      .header img{height:56px;width:auto;}
+      h1{font-size:20px;margin:0;}
       .sub{color:#6B7280;font-size:13px;margin-bottom:24px;}
       table{width:100%;border-collapse:collapse;margin-top:20px;}
       th,td{padding:8px 10px;border-bottom:1px solid #DDE1E6;font-size:13px;text-align:left;}
       th{background:#F1F4F6;text-transform:uppercase;font-size:11px;color:#6B7280;}
-      .total{text-align:right;font-size:18px;font-weight:700;margin-top:14px;}
+      .totales{margin-top:14px;text-align:right;}
+      .totales .fila{font-size:13px;color:#6B7280;margin-bottom:2px;}
+      .total{text-align:right;font-size:18px;font-weight:700;margin-top:6px;}
       .meta{margin:18px 0;font-size:13px;line-height:1.7;}
       .notas{margin-top:24px;font-size:12.5px;color:#6B7280;white-space:pre-wrap;}
       .legal{margin-top:28px;padding:12px 14px;border:1px solid #C08A3E;background:#FBF3E4;font-size:11.5px;line-height:1.6;color:#5A4522;}
@@ -33,10 +53,17 @@ function abrirImpresion(p, lineas, cliente, obra) {
       .firma .label{font-size:11.5px;color:#6B7280;}
     </style></head>
     <body>
-      <h1>Estructuras Humanizadoras</h1>
+      <div class="header">
+        <img src="${logoUrl}" alt="Estructuras Humanizadoras" onerror="this.style.display='none'">
+        <h1>Estructuras Humanizadoras</h1>
+      </div>
       <div class="sub">Presupuesto ${escapeHtml(p.numero || '')} — ${fmtDate(p.fecha)}</div>
       <div class="meta">
         <b>Cliente:</b> ${cliente ? escapeHtml(cliente.nombre) : '—'}<br>
+        ${cliente?.nif ? `<b>NIF/CIF:</b> ${escapeHtml(cliente.nif)}<br>` : ''}
+        ${direccionCliente(cliente) ? `<b>Dirección:</b> ${escapeHtml(direccionCliente(cliente))}<br>` : ''}
+        ${cliente?.telefono ? `<b>Teléfono:</b> ${escapeHtml(cliente.telefono)}<br>` : ''}
+        ${cliente?.email ? `<b>Email:</b> ${escapeHtml(cliente.email)}<br>` : ''}
         ${obra ? `<b>Obra:</b> ${escapeHtml(obra.nombre)}<br>` : ''}
         <b>Validez:</b> ${escapeHtml(p.validezDias || 30)} días
       </div>
@@ -44,7 +71,11 @@ function abrirImpresion(p, lineas, cliente, obra) {
         <thead><tr><th>Concepto</th><th style="text-align:right">Cantidad</th><th style="text-align:right">Precio ud.</th><th style="text-align:right">Importe</th></tr></thead>
         <tbody>${filas}</tbody>
       </table>
-      <div class="total">Total: ${fmtMoney(p.total)}</div>
+      <div class="totales">
+        <div class="fila">Base imponible: ${fmtMoney(base)}</div>
+        <div class="fila">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</div>
+        <div class="total">Total: ${fmtMoney(p.total)}</div>
+      </div>
       ${p.notas ? `<div class="notas">${escapeHtml(p.notas)}</div>` : ''}
       <div class="legal">
         <b>Aviso legal:</b> Este documento es un <b>PRESUPUESTO</b> y tiene carácter meramente
@@ -88,7 +119,7 @@ export default function Presupuestos({ data, actions, calc, setModal }) {
     if (!destinatario) return;
     setSendingId(p.id);
     const { data: res, error } = await supabase.functions.invoke('send-presupuesto-email', {
-      body: { presupuestoId: p.id, destinatario },
+      body: { presupuestoId: p.id, destinatario, origin: window.location.origin },
     });
     setSendingId(null);
     if (error || !res?.ok) {

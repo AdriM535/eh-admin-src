@@ -221,7 +221,8 @@ create table if not exists presupuestos (
   estado text not null default 'borrador',        -- borrador | enviado | aceptado | rechazado
   fecha_aceptacion date,                          -- se rellena sola al marcarlo como "Aceptado"
   notas text,
-  total numeric not null default 0,
+  iva numeric not null default 21,                -- % de IVA aplicado sobre la base de las líneas
+  total numeric not null default 0,               -- base + IVA
   enviado_a text,                                 -- email al que se envió por última vez
   fecha_envio timestamptz,
   created_by uuid references auth.users(id),

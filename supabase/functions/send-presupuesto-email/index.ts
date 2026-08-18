@@ -23,11 +23,23 @@ const corsHeaders = {
 const fmtMoney = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Dirección del cliente a partir de los campos estructurados (calle, número...)
+// o, si no los tiene rellenos, del campo "dirección" antiguo de texto libre.
+function direccionCliente(c) {
+  if (!c) return '';
+  if (c.calle) {
+    const linea1 = [c.calle, c.numero, c.interior].filter(Boolean).join(' ');
+    const linea2 = [c.cp, c.municipio, c.provincia].filter(Boolean).join(' ');
+    return [linea1, linea2].filter(Boolean).join(', ');
+  }
+  return c.direccion || '';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { presupuestoId, destinatario } = await req.json();
+    const { presupuestoId, destinatario, origin } = await req.json();
     if (!presupuestoId || !destinatario) throw new Error('Falta presupuestoId o destinatario.');
 
     // Cliente con el JWT de quien llama: así RLS decide si puede ver el
@@ -61,11 +73,23 @@ Deno.serve(async (req) => {
       )
       .join('');
 
+    const base = (lineas || []).reduce((s, l) => s + (Number(l.importe) || 0), 0);
+    const ivaPct = Number(presupuesto.iva ?? 21);
+    const cuotaIva = base * (ivaPct / 100);
+    const logoUrl = origin ? `${origin}/logo.png` : null;
+
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#2b2622;">
+        ${logoUrl ? `<img src="${logoUrl}" alt="Estructuras Humanizadoras" style="height:48px;margin-bottom:10px;">` : ''}
         <h2 style="margin-bottom:4px;">Presupuesto ${escapeHtml(presupuesto.numero || '')}</h2>
         <p style="color:#6b6259;margin-top:0;">Estructuras Humanizadoras — ${new Date(presupuesto.fecha).toLocaleDateString('es-ES')}</p>
-        ${cliente ? `<p>Para: <b>${escapeHtml(cliente.nombre)}</b></p>` : ''}
+        ${cliente ? `
+        <p style="line-height:1.6;">
+          <b>Para:</b> ${escapeHtml(cliente.nombre)}<br>
+          ${cliente.nif ? `<b>NIF/CIF:</b> ${escapeHtml(cliente.nif)}<br>` : ''}
+          ${direccionCliente(cliente) ? `<b>Dirección:</b> ${escapeHtml(direccionCliente(cliente))}<br>` : ''}
+          ${cliente.telefono ? `<b>Teléfono:</b> ${escapeHtml(cliente.telefono)}<br>` : ''}
+        </p>` : ''}
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">
           <thead>
             <tr style="background:#f4efe9;">
@@ -77,6 +101,8 @@ Deno.serve(async (req) => {
           </thead>
           <tbody>${filas}</tbody>
         </table>
+        <p style="text-align:right;color:#6b6259;font-size:13px;margin:2px 0;">Base imponible: ${fmtMoney(base)}</p>
+        <p style="text-align:right;color:#6b6259;font-size:13px;margin:2px 0;">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</p>
         <p style="text-align:right;font-size:18px;font-weight:bold;">Total: ${fmtMoney(presupuesto.total)}</p>
         ${presupuesto.validez_dias ? `<p style="color:#6b6259;font-size:13px;">Presupuesto válido ${escapeHtml(presupuesto.validez_dias)} días desde la fecha de emisión. No es un compromiso contractual hasta la firma de ambas partes.</p>` : ''}
         ${presupuesto.notas ? `<p style="color:#6b6259;font-size:13px;white-space:pre-wrap;">${escapeHtml(presupuesto.notas)}</p>` : ''}

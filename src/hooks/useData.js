@@ -264,7 +264,9 @@ export function useData(userId) {
   // y fiable que hacer diffing, y el volumen de líneas por presupuesto es bajo.
   const savePresupuesto = async (p) => {
     const { lineas, ...cabecera } = p;
-    const total = (lineas || []).reduce((s, l) => s + Number(l.importe || 0), 0);
+    const base = (lineas || []).reduce((s, l) => s + Number(l.importe || 0), 0);
+    const iva = cabecera.iva ?? 21;
+    const total = base + base * (Number(iva) / 100);
 
     // Al aceptar un presupuesto, pasa directo a Obras: si ya tenía una obra
     // vinculada (todavía "en presupuesto") se activa; si no tenía ninguna,
