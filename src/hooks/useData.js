@@ -291,6 +291,27 @@ export function useData(userId) {
       }
     }
 
+    // Cada concepto del presupuesto alimenta el catálogo de servicios: si el
+    // nombre ya existe (sin distinguir mayúsculas) se le refresca el precio,
+    // si no, se da de alta. Así el catálogo crece solo con el uso real, sin
+    // tener que mantenerlo aparte a mano.
+    const serviciosCache = dataRef.current.servicios.slice();
+    for (const l of lineas || []) {
+      const nombre = (l.concepto || '').trim();
+      if (!nombre) continue;
+      const precio = Number(l.precioUnitario) || 0;
+      const existente = serviciosCache.find((s) => (s.nombre || '').trim().toLowerCase() === nombre.toLowerCase());
+      if (existente) {
+        if (Number(existente.precioUnitario) !== precio) {
+          const actualizado = await updateRow('servicios', 'servicios', existente.id, { precioUnitario: precio });
+          serviciosCache[serviciosCache.findIndex((s) => s.id === existente.id)] = actualizado;
+        }
+      } else {
+        const creado = await insertRow('servicios', 'servicios', { nombre, precioUnitario: precio });
+        serviciosCache.push(creado);
+      }
+    }
+
     const saved = await saveRow('presupuestos', 'presupuestos', { ...cabecera, obraId, total });
 
     if (cabecera.id) {
