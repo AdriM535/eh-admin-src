@@ -17,9 +17,31 @@ function direccionCliente(c) {
   return c.direccion || '';
 }
 
-function abrirImpresion(p, lineas, cliente, obra) {
+// Convierte /logo.png (mismo origen que la app) en un data: URL, para
+// incrustarlo directamente en el HTML de la ventana de impresión — así no
+// depende de que esa ventana en blanco pueda cargar la imagen por su cuenta.
+async function logoComoDataUrl() {
+  try {
+    const res = await fetch('/logo.png');
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function abrirImpresion(p, lineas, cliente, obra) {
+  // Se abre la ventana ya (antes de cualquier await) para que el navegador
+  // no lo bloquee como popup — solo cuenta como "gesto del usuario" si es
+  // síncrono con el clic.
   const win = window.open('', '_blank');
   if (!win) return;
+  const logoDataUrl = await logoComoDataUrl();
   const filas = lineas
     .map(
       (l) => `<tr><td>${escapeHtml(l.concepto)}</td><td style="text-align:right">${escapeHtml(l.cantidad)}</td><td style="text-align:right">${fmtMoney(l.precioUnitario)}</td><td style="text-align:right">${fmtMoney(l.importe)}</td></tr>`
@@ -27,8 +49,8 @@ function abrirImpresion(p, lineas, cliente, obra) {
     .join('');
   const base = lineas.reduce((s, l) => s + (Number(l.importe) || 0), 0);
   const ivaPct = Number(p.iva ?? 21);
-  const cuotaIva = base * (ivaPct / 100);
-  const logoUrl = `${window.location.origin}/logo.png`;
+  const cuotaIva = Math.round(base * (ivaPct / 100) * 100) / 100;
+  const total = base + cuotaIva;
   win.document.write(`
     <html><head><title>Presupuesto ${escapeHtml(p.numero || '')}</title>
     <meta charset="utf-8">
@@ -54,7 +76,7 @@ function abrirImpresion(p, lineas, cliente, obra) {
     </style></head>
     <body>
       <div class="header">
-        <img src="${logoUrl}" alt="Estructuras Humanizadoras" onerror="this.style.display='none'">
+        ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Estructuras Humanizadoras">` : ''}
         <h1>Estructuras Humanizadoras</h1>
       </div>
       <div class="sub">Presupuesto ${escapeHtml(p.numero || '')} — ${fmtDate(p.fecha)}</div>
@@ -74,7 +96,7 @@ function abrirImpresion(p, lineas, cliente, obra) {
       <div class="totales">
         <div class="fila">Base imponible: ${fmtMoney(base)}</div>
         <div class="fila">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</div>
-        <div class="total">Total: ${fmtMoney(p.total)}</div>
+        <div class="total">Total: ${fmtMoney(total)}</div>
       </div>
       ${p.notas ? `<div class="notas">${escapeHtml(p.notas)}</div>` : ''}
       <div class="legal">

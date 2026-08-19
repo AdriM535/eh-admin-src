@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
 
     const base = (lineas || []).reduce((s, l) => s + (Number(l.importe) || 0), 0);
     const ivaPct = Number(presupuesto.iva ?? 21);
-    const cuotaIva = base * (ivaPct / 100);
+    const cuotaIva = Math.round(base * (ivaPct / 100) * 100) / 100;
+    const total = base + cuotaIva;
     const logoUrl = origin ? `${origin}/logo.png` : null;
 
     const html = `
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
         </table>
         <p style="text-align:right;color:#6b6259;font-size:13px;margin:2px 0;">Base imponible: ${fmtMoney(base)}</p>
         <p style="text-align:right;color:#6b6259;font-size:13px;margin:2px 0;">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</p>
-        <p style="text-align:right;font-size:18px;font-weight:bold;">Total: ${fmtMoney(presupuesto.total)}</p>
+        <p style="text-align:right;font-size:18px;font-weight:bold;">Total: ${fmtMoney(total)}</p>
         ${presupuesto.validez_dias ? `<p style="color:#6b6259;font-size:13px;">Presupuesto válido ${escapeHtml(presupuesto.validez_dias)} días desde la fecha de emisión. No es un compromiso contractual hasta la firma de ambas partes.</p>` : ''}
         ${presupuesto.notas ? `<p style="color:#6b6259;font-size:13px;white-space:pre-wrap;">${escapeHtml(presupuesto.notas)}</p>` : ''}
       </div>`;
