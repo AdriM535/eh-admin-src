@@ -86,10 +86,10 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
           <div className="lirow head"><div>Producto</div><div>Cant.</div><div>Precio ud.</div><div>Importe</div><div></div></div>
           {lineas.map((l, idx) => (
             <div className="lirow" key={idx}>
-              <input value={l.producto} onChange={(e) => setLinea(idx, 'producto', e.target.value)} placeholder="Ej. Saco cemento 25kg" />
-              <input type="number" value={l.cantidad} onChange={(e) => setLinea(idx, 'cantidad', e.target.value)} />
-              <input type="number" value={l.precioUnitario} onChange={(e) => setLinea(idx, 'precioUnitario', e.target.value)} />
-              <input value={(Number(l.importe) || 0).toFixed(2)} readOnly />
+              <div className="lifield"><span className="mlabel">Producto</span><input value={l.producto} onChange={(e) => setLinea(idx, 'producto', e.target.value)} placeholder="Ej. Saco cemento 25kg" /></div>
+              <div className="lifield"><span className="mlabel">Cant.</span><input type="number" value={l.cantidad} onChange={(e) => setLinea(idx, 'cantidad', e.target.value)} /></div>
+              <div className="lifield"><span className="mlabel">Precio ud.</span><input type="number" value={l.precioUnitario} onChange={(e) => setLinea(idx, 'precioUnitario', e.target.value)} /></div>
+              <div className="lifield"><span className="mlabel">Importe</span><input value={(Number(l.importe) || 0).toFixed(2)} readOnly /></div>
               <button className="btn danger small" type="button" onClick={() => removeLinea(idx)}>✕</button>
             </div>
           ))}
