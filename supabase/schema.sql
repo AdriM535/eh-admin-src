@@ -220,6 +220,7 @@ create table if not exists presupuestos (
   validez_dias integer default 30,
   estado text not null default 'borrador',        -- borrador | enviado | aceptado | rechazado
   fecha_aceptacion date,                          -- se rellena sola al marcarlo como "Aceptado"
+  direccion_obra text,                            -- si es distinta de la del cliente; vacío = misma que el cliente
   notas text,
   iva numeric not null default 21,                -- % de IVA aplicado sobre la base de las líneas
   total numeric not null default 0,               -- base + IVA

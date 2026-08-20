@@ -23,6 +23,10 @@ const corsHeaders = {
 const fmtMoney = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Contacto de la empresa para dudas sobre el presupuesto.
+const CONTACTO_EMPRESA_EMAIL = 'humanizadoraconstructora@gmail.com';
+const CONTACTO_EMPRESA_TELEFONO = '663-71-6653';
+
 // Dirección del cliente a partir de los campos estructurados (calle, número...)
 // o, si no los tiene rellenos, del campo "dirección" antiguo de texto libre.
 function direccionCliente(c) {
@@ -91,6 +95,9 @@ Deno.serve(async (req) => {
           ${direccionCliente(cliente) ? `<b>Dirección:</b> ${escapeHtml(direccionCliente(cliente))}<br>` : ''}
           ${cliente.telefono ? `<b>Teléfono:</b> ${escapeHtml(cliente.telefono)}<br>` : ''}
         </p>` : ''}
+        <p style="line-height:1.6;">
+          <b>Dirección de la obra:</b> ${presupuesto.direccion_obra ? escapeHtml(presupuesto.direccion_obra) : 'misma que la del cliente' + (direccionCliente(cliente) ? ` (${escapeHtml(direccionCliente(cliente))})` : '')}
+        </p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">
           <thead>
             <tr style="background:#f4efe9;">
@@ -102,9 +109,10 @@ Deno.serve(async (req) => {
           </thead>
           <tbody>${filas}</tbody>
         </table>
-        <p style="text-align:right;color:#6b6259;font-size:13px;margin:2px 0;">Base imponible: ${fmtMoney(base)}</p>
-        <p style="text-align:right;color:#6b6259;font-size:13px;margin:2px 0;">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</p>
-        <p style="text-align:right;font-size:18px;font-weight:bold;">Total: ${fmtMoney(total)}</p>
+        <p style="text-align:right;color:#6b6259;font-size:13px;margin:0;padding:5px 0;border-bottom:1px solid #eee;">Base imponible: ${fmtMoney(base)}</p>
+        <p style="text-align:right;color:#6b6259;font-size:13px;margin:0;padding:5px 0;border-bottom:1px solid #eee;">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</p>
+        <p style="text-align:right;font-size:18px;font-weight:bold;margin:0;padding:8px 0;border-bottom:2px solid #2b2622;">Total: ${fmtMoney(total)}</p>
+        <p style="color:#6b6259;font-size:12px;margin-top:10px;">Para cualquier duda sobre este presupuesto: ${CONTACTO_EMPRESA_EMAIL} · ${CONTACTO_EMPRESA_TELEFONO}</p>
         ${presupuesto.validez_dias ? `<p style="color:#6b6259;font-size:13px;">Presupuesto válido ${escapeHtml(presupuesto.validez_dias)} días desde la fecha de emisión. No es un compromiso contractual hasta la firma de ambas partes.</p>` : ''}
         ${presupuesto.notas ? `<p style="color:#6b6259;font-size:13px;white-space:pre-wrap;">${escapeHtml(presupuesto.notas)}</p>` : ''}
       </div>`;

@@ -5,6 +5,10 @@ import { ESTADOS_PRESUPUESTO } from '../../lib/constants.js';
 
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Contacto de la empresa para dudas sobre el presupuesto.
+const CONTACTO_EMPRESA_EMAIL = 'humanizadoraconstructora@gmail.com';
+const CONTACTO_EMPRESA_TELEFONO = '663-71-6653';
+
 // Dirección del cliente a partir de los campos estructurados (calle, número...)
 // o, si no los tiene rellenos, del campo "dirección" antiguo de texto libre.
 function direccionCliente(c) {
@@ -63,10 +67,11 @@ async function abrirImpresion(p, lineas, cliente, obra) {
       table{width:100%;border-collapse:collapse;margin-top:20px;}
       th,td{padding:8px 10px;border-bottom:1px solid #DDE1E6;font-size:13px;text-align:left;}
       th{background:#F1F4F6;text-transform:uppercase;font-size:11px;color:#6B7280;}
-      .totales{margin-top:14px;text-align:right;}
-      .totales .fila{font-size:13px;color:#6B7280;margin-bottom:2px;}
-      .total{text-align:right;font-size:18px;font-weight:700;margin-top:6px;}
+      .totales{margin-top:14px;}
+      .totales .fila{text-align:right;font-size:13px;color:#6B7280;padding:5px 0;border-bottom:1px solid #DDE1E6;}
+      .total{text-align:right;font-size:18px;font-weight:700;padding:8px 0;border-bottom:2px solid #32363B;}
       .meta{margin:18px 0;font-size:13px;line-height:1.7;}
+      .contacto{margin-top:10px;font-size:12px;color:#6B7280;}
       .notas{margin-top:24px;font-size:12.5px;color:#6B7280;white-space:pre-wrap;}
       .legal{margin-top:28px;padding:12px 14px;border:1px solid #C08A3E;background:#FBF3E4;font-size:11.5px;line-height:1.6;color:#5A4522;}
       .firmas{display:flex;gap:40px;margin-top:56px;}
@@ -87,6 +92,7 @@ async function abrirImpresion(p, lineas, cliente, obra) {
         ${cliente?.telefono ? `<b>Teléfono:</b> ${escapeHtml(cliente.telefono)}<br>` : ''}
         ${cliente?.email ? `<b>Email:</b> ${escapeHtml(cliente.email)}<br>` : ''}
         ${obra ? `<b>Obra:</b> ${escapeHtml(obra.nombre)}<br>` : ''}
+        <b>Dirección de la obra:</b> ${p.direccionObra ? escapeHtml(p.direccionObra) : 'misma que la del cliente' + (direccionCliente(cliente) ? ` (${escapeHtml(direccionCliente(cliente))})` : '')}<br>
         <b>Validez:</b> ${escapeHtml(p.validezDias || 30)} días
       </div>
       <table>
@@ -98,6 +104,7 @@ async function abrirImpresion(p, lineas, cliente, obra) {
         <div class="fila">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</div>
         <div class="total">Total: ${fmtMoney(total)}</div>
       </div>
+      <div class="contacto">Para cualquier duda sobre este presupuesto: ${CONTACTO_EMPRESA_EMAIL} · ${CONTACTO_EMPRESA_TELEFONO}</div>
       ${p.notas ? `<div class="notas">${escapeHtml(p.notas)}</div>` : ''}
       <div class="legal">
         <b>Aviso legal:</b> Este documento es un <b>PRESUPUESTO</b> y tiene carácter meramente

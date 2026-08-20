@@ -9,9 +9,10 @@ const emptyLinea = () => ({ concepto: '', cantidad: 1, precioUnitario: '', impor
 export default function PresupuestoForm({ initial, obras, clientes, servicios, presupuestoLineas, onSave, onCreateCliente, onClose }) {
   const initialLineas = initial ? presupuestoLineas.filter((l) => l.presupuestoId === initial.id).sort((a, b) => a.orden - b.orden) : [];
   const [f, setF] = useState(
-    initial || { clienteId: clientes[0]?.id || '', obraId: '', numero: '', fecha: todayISO(), validezDias: 30, estado: 'borrador', fechaAceptacion: '', iva: 21, notas: '' }
+    initial || { clienteId: clientes[0]?.id || '', obraId: '', numero: '', fecha: todayISO(), validezDias: 30, estado: 'borrador', fechaAceptacion: '', iva: 21, direccionObra: '', notas: '' }
   );
   const [lineas, setLineas] = useState(initialLineas.length > 0 ? initialLineas : [emptyLinea()]);
+  const [otraDireccionObra, setOtraDireccionObra] = useState(!!(initial && initial.direccionObra));
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
   const marcarAceptado = () => setF((prev) => ({ ...prev, estado: 'aceptado', fechaAceptacion: prev.fechaAceptacion || todayISO() }));
   const setEstado = (v) => setF((prev) => ({ ...prev, estado: v, fechaAceptacion: v === 'aceptado' ? (prev.fechaAceptacion || todayISO()) : prev.fechaAceptacion }));
@@ -96,6 +97,25 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
         </Field>
         <Field label="Número"><input value={f.numero || ''} onChange={(e) => set('numero', e.target.value)} placeholder="PRE-2026-001" /></Field>
       </div>
+      <Field label="Dirección de la obra">
+        <div style={{ display: 'flex', gap: 16, marginBottom: 6, fontSize: 13 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <input type="radio" checked={!otraDireccionObra} onChange={() => { setOtraDireccionObra(false); set('direccionObra', ''); }} />
+            Misma que la del cliente
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <input type="radio" checked={otraDireccionObra} onChange={() => setOtraDireccionObra(true)} />
+            Otra dirección
+          </label>
+        </div>
+        {otraDireccionObra && (
+          <input
+            value={f.direccionObra || ''}
+            onChange={(e) => set('direccionObra', e.target.value)}
+            placeholder="Calle, número, ciudad…"
+          />
+        )}
+      </Field>
       <div className="grid3">
         <Field label="Fecha"><input type="date" value={f.fecha} onChange={(e) => set('fecha', e.target.value)} /></Field>
         <Field label="Validez (días)"><input type="number" value={f.validezDias} onChange={(e) => set('validezDias', e.target.value)} /></Field>
