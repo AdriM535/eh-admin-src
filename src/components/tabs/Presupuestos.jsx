@@ -60,16 +60,17 @@ async function abrirImpresion(p, lineas, cliente, obra) {
     <meta charset="utf-8">
     <style>
       body{font-family:Arial,Helvetica,sans-serif;color:#32363B;padding:40px;max-width:760px;margin:0 auto;}
-      .header{display:flex;align-items:center;gap:16px;margin-bottom:6px;}
+      .header{display:flex;align-items:center;gap:16px;margin-bottom:2px;}
       .header img{height:56px;width:auto;}
-      h1{font-size:20px;margin:0;}
+      .empresa-nombre{font-size:16px;font-weight:700;}
+      .titulo-presupuesto{font-size:28px;font-weight:800;letter-spacing:0.02em;margin:8px 0 2px;}
       .sub{color:#6B7280;font-size:13px;margin-bottom:24px;}
       table{width:100%;border-collapse:collapse;margin-top:20px;}
       th,td{padding:8px 10px;border-bottom:1px solid #DDE1E6;font-size:13px;text-align:left;}
       th{background:#F1F4F6;text-transform:uppercase;font-size:11px;color:#6B7280;}
       .totales{margin-top:14px;}
       .totales .fila{text-align:right;font-size:13px;color:#6B7280;padding:5px 0;border-bottom:1px solid #DDE1E6;}
-      .total{text-align:right;font-size:18px;font-weight:700;padding:8px 0;border-bottom:2px solid #32363B;}
+      .total{text-align:right;font-size:18px;font-weight:700;padding:8px 0;border-top:1px solid #DDE1E6;border-bottom:2px solid #32363B;}
       .meta{margin:18px 0;font-size:13px;line-height:1.7;}
       .contacto{margin-top:10px;font-size:12px;color:#6B7280;}
       .notas{margin-top:24px;font-size:12.5px;color:#6B7280;white-space:pre-wrap;}
@@ -82,9 +83,10 @@ async function abrirImpresion(p, lineas, cliente, obra) {
     <body>
       <div class="header">
         ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Estructuras Humanizadoras">` : ''}
-        <h1>Estructuras Humanizadoras</h1>
+        <div class="empresa-nombre">Estructuras Humanizadoras</div>
       </div>
-      <div class="sub">Presupuesto ${escapeHtml(p.numero || '')} — ${fmtDate(p.fecha)}</div>
+      <div class="titulo-presupuesto">PRESUPUESTO${p.numero ? ' ' + escapeHtml(p.numero) : ''}</div>
+      <div class="sub">Fecha de emisión: ${fmtDate(p.fecha)}</div>
       <div class="meta">
         <b>Cliente:</b> ${cliente ? escapeHtml(cliente.nombre) : '—'}<br>
         ${cliente?.nif ? `<b>NIF/CIF:</b> ${escapeHtml(cliente.nif)}<br>` : ''}

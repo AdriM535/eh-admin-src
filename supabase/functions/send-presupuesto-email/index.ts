@@ -85,9 +85,10 @@ Deno.serve(async (req) => {
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#2b2622;">
-        ${logoUrl ? `<img src="${logoUrl}" alt="Estructuras Humanizadoras" style="height:48px;margin-bottom:10px;">` : ''}
-        <h2 style="margin-bottom:4px;">Presupuesto ${escapeHtml(presupuesto.numero || '')}</h2>
-        <p style="color:#6b6259;margin-top:0;">Estructuras Humanizadoras — ${new Date(presupuesto.fecha).toLocaleDateString('es-ES')}</p>
+        ${logoUrl ? `<img src="${logoUrl}" alt="Estructuras Humanizadoras" style="height:48px;margin-bottom:6px;">` : ''}
+        <p style="font-size:15px;font-weight:bold;margin:0;">Estructuras Humanizadoras</p>
+        <h1 style="font-size:26px;font-weight:800;margin:8px 0 2px;">PRESUPUESTO${presupuesto.numero ? ' ' + escapeHtml(presupuesto.numero) : ''}</h1>
+        <p style="color:#6b6259;font-size:13px;margin-top:0;">Fecha de emisión: ${new Date(presupuesto.fecha).toLocaleDateString('es-ES')}</p>
         ${cliente ? `
         <p style="line-height:1.6;">
           <b>Para:</b> ${escapeHtml(cliente.nombre)}<br>
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
         </table>
         <p style="text-align:right;color:#6b6259;font-size:13px;margin:0;padding:5px 0;border-bottom:1px solid #eee;">Base imponible: ${fmtMoney(base)}</p>
         <p style="text-align:right;color:#6b6259;font-size:13px;margin:0;padding:5px 0;border-bottom:1px solid #eee;">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</p>
-        <p style="text-align:right;font-size:18px;font-weight:bold;margin:0;padding:8px 0;border-bottom:2px solid #2b2622;">Total: ${fmtMoney(total)}</p>
+        <p style="text-align:right;font-size:18px;font-weight:bold;margin:0;padding:8px 0;border-top:1px solid #eee;border-bottom:2px solid #2b2622;">Total: ${fmtMoney(total)}</p>
         <p style="color:#6b6259;font-size:12px;margin-top:10px;">Para cualquier duda sobre este presupuesto: ${CONTACTO_EMPRESA_EMAIL} · ${CONTACTO_EMPRESA_TELEFONO}</p>
         ${presupuesto.validez_dias ? `<p style="color:#6b6259;font-size:13px;">Presupuesto válido ${escapeHtml(presupuesto.validez_dias)} días desde la fecha de emisión. No es un compromiso contractual hasta la firma de ambas partes.</p>` : ''}
         ${presupuesto.notas ? `<p style="color:#6b6259;font-size:13px;white-space:pre-wrap;">${escapeHtml(presupuesto.notas)}</p>` : ''}
