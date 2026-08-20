@@ -175,9 +175,9 @@ export default function PresupuestoForm({ initial, obras, clientes, servicios, p
       </Field>
 
       <div style={{ textAlign: 'right', fontSize: 13, margin: '10px 0 2px', color: 'var(--ink-soft)' }}>
-        Base imponible: {base.toFixed(2)} € &nbsp;+&nbsp; IVA ({ivaPct}%): {cuotaIva.toFixed(2)} €
+        Base imponible: {fmtMoney(base)} &nbsp;+&nbsp; IVA ({ivaPct}%): {fmtMoney(cuotaIva)}
       </div>
-      <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, margin: '0 0 10px' }}>Total: {total.toFixed(2)} €</div>
+      <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, margin: '0 0 10px' }}>Total: {fmtMoney(total)}</div>
 
       <Field label="Notas / condiciones"><textarea value={f.notas || ''} onChange={(e) => set('notas', e.target.value)} /></Field>
       <div className="modal-actions">

@@ -97,7 +97,7 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
         <button className="btn ghost small" type="button" onClick={addLinea}>+ Añadir producto</button>
       </Field>
 
-      <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, margin: '10px 0' }}>Total: {total.toFixed(2)} €</div>
+      <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, margin: '10px 0' }}>Total: {fmtMoney(total)}</div>
 
       <div className="grid3">
         <Field label="Método de pago">
