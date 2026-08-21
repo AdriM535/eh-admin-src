@@ -68,12 +68,12 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
         <table>
           <thead>
             <tr>
-              <th>Código</th><th>Obra</th><th>Cliente</th><th>Ciudad</th><th>Responsable</th><th>Estado</th>
+              <th>Código</th><th>Cliente</th><th>Ciudad</th><th>Responsable</th><th>Estado</th>
               <th>Presupuestado</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Indirecto</th><th>Margen real</th><th></th>
             </tr>
           </thead>
           <tbody>
-            {obras.length === 0 && <tr><td colSpan="13" className="empty">Sin obras registradas.</td></tr>}
+            {obras.length === 0 && <tr><td colSpan="12" className="empty">Sin obras registradas.</td></tr>}
             {obras.map((o) => {
               const cli = calc.clienteById(o.clienteId);
               const resp = calc.personalById(o.responsableId);
@@ -83,8 +83,7 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                 <Fragment key={o.id}>
                   <tr>
                     <td>{o.codigo || '—'}</td>
-                    <td><b>{o.nombre}</b>{o.direccion && <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{o.direccion}</div>}</td>
-                    <td>{cli ? cli.nombre : '—'}</td>
+                    <td><b>{cli ? cli.nombre : o.nombre}</b>{o.direccion && <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{o.direccion}</div>}</td>
                     <td>{o.ciudad || '—'}</td>
                     <td>{resp ? resp.nombre : '—'}</td>
                     <td>{estadoPill(o.estado)}</td>
@@ -102,7 +101,7 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                   </tr>
                   {open && (
                     <tr>
-                      <td colSpan="13" style={{ background: 'var(--line-soft)' }}>
+                      <td colSpan="12" style={{ background: 'var(--line-soft)' }}>
                         <div style={{ padding: '8px 4px', fontSize: 12.5 }}>
                           {o.stats.pendienteCobro > 0 && <div style={{ marginBottom: 8 }}><span className="pill brick">Pendiente de cobro: {fmtMoney(o.stats.pendienteCobro)}</span></div>}
 
