@@ -69,11 +69,11 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
           <thead>
             <tr>
               <th>Código</th><th>Obra</th><th>Cliente</th><th>Ciudad</th><th>Responsable</th><th>Estado</th>
-              <th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Indirecto</th><th>Margen real</th><th></th>
+              <th>Presupuestado</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Indirecto</th><th>Margen real</th><th></th>
             </tr>
           </thead>
           <tbody>
-            {obras.length === 0 && <tr><td colSpan="12" className="empty">Sin obras registradas.</td></tr>}
+            {obras.length === 0 && <tr><td colSpan="13" className="empty">Sin obras registradas.</td></tr>}
             {obras.map((o) => {
               const cli = calc.clienteById(o.clienteId);
               const resp = calc.personalById(o.responsableId);
@@ -88,6 +88,7 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                     <td>{o.ciudad || '—'}</td>
                     <td>{resp ? resp.nombre : '—'}</td>
                     <td>{estadoPill(o.estado)}</td>
+                    <td className="num" title="Suma de los presupuestos aceptados vinculados a esta obra">{fmtMoney(o.stats.totalPresupuestado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalFacturado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalCobrado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalGastos)}</td>
@@ -101,9 +102,32 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                   </tr>
                   {open && (
                     <tr>
-                      <td colSpan="12" style={{ background: 'var(--line-soft)' }}>
+                      <td colSpan="13" style={{ background: 'var(--line-soft)' }}>
                         <div style={{ padding: '8px 4px', fontSize: 12.5 }}>
                           {o.stats.pendienteCobro > 0 && <div style={{ marginBottom: 8 }}><span className="pill brick">Pendiente de cobro: {fmtMoney(o.stats.pendienteCobro)}</span></div>}
+
+                          {o.stats.presupuestosObra.length > 0 && (
+                            <>
+                              <b style={{ display: 'block', marginBottom: 4 }}>Presupuesto aceptado — trabajo a realizar</b>
+                              {o.stats.presupuestosObra.map((p) => {
+                                const lineasP = data.presupuestoLineas.filter((l) => l.presupuestoId === p.id).sort((a, b) => a.orden - b.orden);
+                                return (
+                                  <div key={p.id} style={{ marginBottom: 8 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                      <span>{p.numero || 'Presupuesto'}{p.fechaAceptacion ? ` — aceptado ${fmtDate(p.fechaAceptacion)}` : ''}</span>
+                                      <span>{fmtMoney(p.total)}</span>
+                                    </div>
+                                    {lineasP.map((l) => (
+                                      <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0 2px 10px', color: 'var(--ink-soft)' }}>
+                                        <span>{l.concepto}{Number(l.cantidad) > 1 ? ` × ${l.cantidad}` : ''}</span>
+                                        <span>{fmtMoney(l.importe)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontWeight: 600 }}>
                             <span>Margen directo (facturado − gasto directo)</span>

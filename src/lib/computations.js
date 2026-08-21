@@ -79,6 +79,8 @@ export function computeAll(data) {
     const compras = data.facturasCompra.filter((f) => f.obraId === obraId);
     const abonosObra = data.abonos.filter((a) => a.obraId === obraId);
     const incidenciasObra = data.incidencias.filter((i) => i.obraId === obraId);
+    const presupuestosObra = data.presupuestos.filter((p) => p.obraId === obraId && p.estado === 'aceptado');
+    const totalPresupuestado = sum(presupuestosObra, (p) => p.total);
 
     const totalFacturado = sum(ventas, (f) => f.total);
     const totalCobradoFacturas = sum(ventas.filter((f) => f.cobrado), (f) => f.total);
@@ -98,7 +100,7 @@ export function computeAll(data) {
     const margenReal = totalFacturado - totalGastosConIndirecto;
 
     return {
-      ventas, compras, abonosObra, incidenciasObra,
+      ventas, compras, abonosObra, incidenciasObra, presupuestosObra, totalPresupuestado,
       totalFacturado, totalCobrado, totalCobradoFacturas, totalAbonos, pendienteCobro,
       totalCompras, costeIncidenciasEmpresa, costeIncidenciasEmpleado, totalGastos, margen,
       costeIndirecto, totalGastosConIndirecto, margenReal,
