@@ -175,7 +175,11 @@ export function computeAll(data) {
 
   const obrasConStats = data.obras.map((o) => ({ ...o, stats: obraStats(o.id) }));
 
-  const pendienteCobroTotal = sum(data.facturasVenta.filter((f) => !f.cobrado), (f) => f.total);
+  // Incluye también las obras facturadas "directamente" (sin factura de
+  // venta formal) que todavía no se han marcado como cobradas.
+  const pendienteCobroTotal =
+    sum(data.facturasVenta.filter((f) => !f.cobrado), (f) => f.total) +
+    sum(data.obras.filter((o) => o.facturada && !o.cobrada), (o) => o.importeDirecto);
   const pendientePagoTotal = sum(data.facturasCompra.filter((f) => !f.pagado), (f) => f.total);
   const totalEnB = sum(data.facturasVenta.filter((f) => f.enB), (f) => f.total) + sum(data.abonos.filter((a) => a.enB), (a) => a.importe);
 

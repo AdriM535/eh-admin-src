@@ -5,18 +5,20 @@ import { ESTADOS_OBRA, METODOS_COBRO } from '../../lib/constants.js';
 import { direccionCliente } from '../../lib/utils.js';
 
 export default function ObraForm({ initial, clientes, personal, presupuestos, onSave, onClose }) {
+  // El presupuesto aceptado que dio origen a esta obra ya tiene su dirección
+  // y su importe — se reutilizan como valor inicial en vez de partir de cero.
+  const presupuestoInicial = initial?.id ? (presupuestos || []).find((p) => p.obraId === initial.id && p.estado === 'aceptado') : null;
   const [f, setF] = useState(
-    initial || {
-      nombre: '', clienteId: clientes[0]?.id || '', responsableId: '', direccion: '', ciudad: '',
-      estado: 'presupuesto', fechaInicio: '', fechaFin: '', notas: '',
-      facturada: false, cobrada: false, metodoCobro: '', importeDirecto: '',
-    }
+    initial
+      ? { ...initial, importeDirecto: initial.importeDirecto ?? (presupuestoInicial ? presupuestoInicial.total : '') }
+      : {
+          nombre: '', clienteId: clientes[0]?.id || '', responsableId: '', direccion: '', ciudad: '',
+          estado: 'presupuesto', fechaInicio: '', fechaFin: '', notas: '',
+          facturada: false, cobrada: false, metodoCobro: '', importeDirecto: '',
+        }
   );
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
 
-  // El presupuesto aceptado que dio origen a esta obra ya tiene la
-  // dirección de la obra (o la del cliente) — se puede reutilizar en vez de
-  // volver a escribirla a mano.
   const presupuestoObra = f.id ? (presupuestos || []).find((p) => p.obraId === f.id && p.estado === 'aceptado') : null;
   const clienteObra = clientes.find((c) => c.id === f.clienteId);
   const rellenarDesdePresupuesto = () => {
@@ -92,6 +94,7 @@ export default function ObraForm({ initial, clientes, personal, presupuestos, on
         </div>
         <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: -2 }}>
           Si esta obra ya tiene facturas de venta propias, no hace falta rellenar esto — se suma aparte, para no duplicar el importe.
+          Puedes guardar sin marcar "Cobrada" todavía: mientras esté facturada y sin cobrar, aparecerá como pendiente de cobro en Obras y en Panorama.
         </div>
       </Field>
 

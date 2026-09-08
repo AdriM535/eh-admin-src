@@ -41,6 +41,19 @@ describe('obraStats: facturación directa (obras sin factura de venta formal)', 
     expect(s.totalFacturado).toBe(0);
     expect(s.totalCobrado).toBe(0);
   });
+
+  it('pendienteCobroTotal (Panorama) suma las obras facturadas directamente y aún sin cobrar', () => {
+    const data = baseData({
+      facturasVenta: [{ id: 'v1', total: 100, cobrado: false }],
+      obras: [
+        { id: 'o1', facturada: true, cobrada: false, importeDirecto: 500 }, // pendiente: cuenta
+        { id: 'o2', facturada: true, cobrada: true, importeDirecto: 200 }, // ya cobrada: no cuenta
+        { id: 'o3', facturada: false, cobrada: false, importeDirecto: 800 }, // ni facturada: no cuenta
+      ],
+    });
+    const { pendienteCobroTotal } = computeAll(data);
+    expect(pendienteCobroTotal).toBe(600); // 100 (factura pendiente) + 500 (obra o1)
+  });
 });
 
 describe('obraStats: totalPresupuestado', () => {
