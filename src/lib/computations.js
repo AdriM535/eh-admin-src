@@ -121,9 +121,18 @@ export function computeAll(data) {
     const presupuestosObra = data.presupuestos.filter((p) => p.obraId === obraId && p.estado === 'aceptado');
     const totalPresupuestado = sum(presupuestosObra, (p) => p.total);
 
+    // Obras sin factura de venta formal (trabajos pequeños cobrados
+    // directamente): "facturada"/"cobrada"/"importeDirecto" en la propia
+    // obra permiten que igualmente cuenten en Facturado/Cobrado, en vez de
+    // aparecer siempre en 0,00 € por no tener una factura de venta.
+    const obra = obraById(obraId);
+    const importeDirecto = Number(obra?.importeDirecto) || 0;
+    const importeDirectoFacturado = obra?.facturada ? importeDirecto : 0;
+    const importeDirectoCobrado = obra?.cobrada ? importeDirecto : 0;
+
     // ---- cifras CON IVA: lo que aparece en la factura, columnas sin cambios ----
-    const totalFacturado = sum(ventas, (f) => f.total);
-    const totalCobradoFacturas = sum(ventas.filter((f) => f.cobrado), (f) => f.total);
+    const totalFacturado = sum(ventas, (f) => f.total) + importeDirectoFacturado;
+    const totalCobradoFacturas = sum(ventas.filter((f) => f.cobrado), (f) => f.total) + importeDirectoCobrado;
     const totalAbonos = sum(abonosObra, (a) => a.importe);
     const totalCobrado = totalCobradoFacturas + totalAbonos;
     const pendienteCobro = Math.max(0, totalFacturado - totalCobradoFacturas);
@@ -137,7 +146,9 @@ export function computeAll(data) {
     const totalGastosConIndirecto = totalGastos + costeIndirecto;
 
     // ---- margen: sobre bases imponibles (sin IVA) — ver IVA_RECUPERABLE ----
-    const facturadoBase = sum(ventas, baseOTotalVenta);
+    // El importe directo (sin factura de venta formal) se cuenta tal cual,
+    // sin intentar quitarle una base imponible que nunca se declaró.
+    const facturadoBase = sum(ventas, baseOTotalVenta) + importeDirectoFacturado;
     const comprasBase = sum(compras, baseOTotalCompra);
     const costeIndirectoBase = indirectosBase.indirectoPorObraTotal[obraId] || 0;
     const gastosBase = comprasBase + costeIncidenciasEmpresa; // las incidencias no llevan IVA
@@ -148,7 +159,6 @@ export function computeAll(data) {
     // falta el desglose de base imponible en alguna venta/compra (se usó el
     // total como aproximación), o la obra sigue en curso (pueden faltar
     // costes todavía por registrar/facturar).
-    const obra = obraById(obraId);
     const margenEstimado =
       ventas.some(ventaBaseEsAproximada) ||
       compras.some(compraBaseEsAproximada) ||

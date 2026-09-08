@@ -12,6 +12,37 @@ function baseData(overrides = {}) {
   };
 }
 
+describe('obraStats: facturación directa (obras sin factura de venta formal)', () => {
+  it('cuenta el importe directo en Facturado solo si "facturada" está marcada', () => {
+    const data = baseData({
+      obras: [{ id: 'o1', estado: 'finalizada', facturada: true, cobrada: false, importeDirecto: 500 }],
+    });
+    const { obrasConStats } = computeAll(data);
+    const s = obrasConStats[0].stats;
+    expect(s.totalFacturado).toBe(500);
+    expect(s.totalCobradoFacturas).toBe(0);
+    expect(s.pendienteCobro).toBe(500);
+  });
+
+  it('cuenta el importe directo en Cobrado solo si "cobrada" está marcada, aunque no esté facturada', () => {
+    const data = baseData({
+      obras: [{ id: 'o1', estado: 'finalizada', facturada: false, cobrada: true, importeDirecto: 300 }],
+    });
+    const { obrasConStats } = computeAll(data);
+    const s = obrasConStats[0].stats;
+    expect(s.totalFacturado).toBe(0); // no marcada como facturada
+    expect(s.totalCobrado).toBe(300); // pero sí como cobrada
+  });
+
+  it('no duplica nada cuando ni facturada ni cobrada están marcadas', () => {
+    const data = baseData({ obras: [{ id: 'o1', estado: 'finalizada', importeDirecto: 999 }] });
+    const { obrasConStats } = computeAll(data);
+    const s = obrasConStats[0].stats;
+    expect(s.totalFacturado).toBe(0);
+    expect(s.totalCobrado).toBe(0);
+  });
+});
+
 describe('obraStats: totalPresupuestado', () => {
   it('solo suma presupuestos ACEPTADOS vinculados a la obra, no borradores ni de otras obras', () => {
     const data = baseData({

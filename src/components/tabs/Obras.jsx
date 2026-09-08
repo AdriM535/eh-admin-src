@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { fmtMoney, fmtDate } from '../../lib/utils.js';
-import { ESTADOS_OBRA } from '../../lib/constants.js';
+import { ESTADOS_OBRA, METODOS_COBRO } from '../../lib/constants.js';
 
 export default function Obras({ data, actions, calc, setModal, docs }) {
   const [estadoFilter, setEstadoFilter] = useState('todas');
@@ -109,6 +109,14 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                       <td colSpan="12" style={{ background: 'var(--line-soft)' }}>
                         <div style={{ padding: '8px 4px', fontSize: 12.5 }}>
                           {o.stats.pendienteCobro > 0 && <div style={{ marginBottom: 8 }}><span className="pill brick">Pendiente de cobro: {fmtMoney(o.stats.pendienteCobro)}</span></div>}
+
+                          {(o.facturada || o.cobrada || o.importeDirecto) && (
+                            <div style={{ marginBottom: 8, fontSize: 12.5 }}>
+                              <b>Facturación directa (sin factura de venta):</b> {fmtMoney(o.importeDirecto)}
+                              {' — '}{o.facturada ? 'facturada' : 'sin facturar'}, {o.cobrada ? 'cobrada' : 'pendiente de cobro'}
+                              {o.metodoCobro && ` (${METODOS_COBRO.find((m) => m.id === o.metodoCobro)?.label || o.metodoCobro})`}
+                            </div>
+                          )}
 
                           {o.stats.presupuestosObra.length > 0 && (
                             <>

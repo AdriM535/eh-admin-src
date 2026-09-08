@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../supabaseClient.js';
-import { fmtMoney, fmtDate, todayISO } from '../../lib/utils.js';
+import { fmtMoney, fmtDate, todayISO, direccionCliente } from '../../lib/utils.js';
 import { ESTADOS_PRESUPUESTO } from '../../lib/constants.js';
 
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -8,18 +8,6 @@ const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 // Contacto de la empresa para dudas sobre el presupuesto.
 const CONTACTO_EMPRESA_EMAIL = 'humanizadoraconstructora@gmail.com';
 const CONTACTO_EMPRESA_TELEFONO = '663-71-6653';
-
-// Dirección del cliente a partir de los campos estructurados (calle, número...)
-// o, si no los tiene rellenos, del campo "dirección" antiguo de texto libre.
-function direccionCliente(c) {
-  if (!c) return '';
-  if (c.calle) {
-    const linea1 = [c.calle, c.numero, c.interior].filter(Boolean).join(' ');
-    const linea2 = [c.cp, c.municipio, c.provincia].filter(Boolean).join(' ');
-    return [linea1, linea2].filter(Boolean).join(', ');
-  }
-  return c.direccion || '';
-}
 
 // Convierte /logo.png (mismo origen que la app) en un data: URL, para
 // incrustarlo directamente en el HTML de la ventana de impresión — así no

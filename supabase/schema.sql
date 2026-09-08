@@ -43,6 +43,10 @@ create table if not exists obras (
   fecha_inicio date,
   fecha_fin date,
   notas text,
+  facturada boolean not null default false,      -- para obras sin factura de venta formal (trabajos pequeños cobrados directamente)
+  cobrada boolean not null default false,
+  metodo_cobro text,                             -- cuenta | efectivo
+  importe_directo numeric,                       -- importe cobrado directamente, sin factura de venta
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );

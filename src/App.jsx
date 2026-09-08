@@ -116,7 +116,9 @@ function Operacion({ user, onSignOut }) {
         {isAdmin && tab === 'respaldos' && <Respaldos {...tabProps} />}
       </main>
 
-      {modal?.type === 'obra' && <ObraForm initial={modal.initial} clientes={data.clientes} personal={data.personal} onSave={wrap(actions.saveObra)} onClose={() => setModal(null)} />}
+      {modal?.type === 'obra' && (
+        <ObraForm initial={modal.initial} clientes={data.clientes} personal={data.personal} presupuestos={data.presupuestos} onSave={wrap(actions.saveObra)} onClose={() => setModal(null)} />
+      )}
       {modal?.type === 'cliente' && <ClienteForm initial={modal.initial} onSave={wrap(actions.saveCliente)} onClose={() => setModal(null)} />}
       {modal?.type === 'facturaVenta' && (
         <FacturaVentaForm initial={modal.initial} obras={data.obras} clientes={data.clientes} docs={docs} onSave={wrap(actions.saveFacturaVenta)} onClose={() => setModal(null)} />

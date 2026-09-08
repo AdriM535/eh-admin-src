@@ -75,3 +75,16 @@ export function lineasCompraValidas(lineas) {
 export function totalLineasCompra(lineas) {
   return lineasCompraValidas(lineas).reduce((s, l) => s + (Number(l.importe) || 0), 0);
 }
+
+// Dirección de un cliente a partir de los campos estructurados (calle,
+// número...) o, si no los tiene rellenos, del campo "dirección" antiguo de
+// texto libre.
+export function direccionCliente(c) {
+  if (!c) return '';
+  if (c.calle) {
+    const linea1 = [c.calle, c.numero, c.interior].filter(Boolean).join(' ');
+    const linea2 = [c.cp, c.municipio, c.provincia].filter(Boolean).join(', ');
+    return [linea1, linea2].filter(Boolean).join(', ');
+  }
+  return c.direccion || '';
+}

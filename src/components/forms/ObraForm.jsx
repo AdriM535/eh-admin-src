@@ -1,11 +1,31 @@
 import { useState } from 'react';
 import Modal from '../common/Modal.jsx';
 import Field from '../common/Field.jsx';
-import { ESTADOS_OBRA } from '../../lib/constants.js';
+import { ESTADOS_OBRA, METODOS_COBRO } from '../../lib/constants.js';
+import { direccionCliente } from '../../lib/utils.js';
 
-export default function ObraForm({ initial, clientes, personal, onSave, onClose }) {
-  const [f, setF] = useState(initial || { nombre: '', clienteId: clientes[0]?.id || '', responsableId: '', direccion: '', ciudad: '', estado: 'presupuesto', fechaInicio: '', fechaFin: '', notas: '' });
+export default function ObraForm({ initial, clientes, personal, presupuestos, onSave, onClose }) {
+  const [f, setF] = useState(
+    initial || {
+      nombre: '', clienteId: clientes[0]?.id || '', responsableId: '', direccion: '', ciudad: '',
+      estado: 'presupuesto', fechaInicio: '', fechaFin: '', notas: '',
+      facturada: false, cobrada: false, metodoCobro: '', importeDirecto: '',
+    }
+  );
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
+
+  // El presupuesto aceptado que dio origen a esta obra ya tiene la
+  // dirección de la obra (o la del cliente) — se puede reutilizar en vez de
+  // volver a escribirla a mano.
+  const presupuestoObra = f.id ? (presupuestos || []).find((p) => p.obraId === f.id && p.estado === 'aceptado') : null;
+  const clienteObra = clientes.find((c) => c.id === f.clienteId);
+  const rellenarDesdePresupuesto = () => {
+    if (!presupuestoObra) return;
+    const direccion = presupuestoObra.direccionObra || direccionCliente(clienteObra);
+    const ciudad = clienteObra?.municipio || '';
+    setF((prev) => ({ ...prev, direccion: direccion || prev.direccion, ciudad: ciudad || prev.ciudad }));
+  };
+
   return (
     <Modal title={initial && initial.id ? 'Editar obra' : 'Nueva obra'} onClose={onClose}>
       {f.id && (
@@ -37,11 +57,44 @@ export default function ObraForm({ initial, clientes, personal, onSave, onClose 
         </Field>
         <Field label="Ciudad"><input value={f.ciudad || ''} onChange={(e) => set('ciudad', e.target.value)} placeholder="Bilbao, Bermeo…" /></Field>
       </div>
+      {presupuestoObra && (!f.direccion || !f.ciudad) && (
+        <button type="button" className="btn ghost small" style={{ marginBottom: 10 }} onClick={rellenarDesdePresupuesto}>
+          ⤵ Rellenar con la dirección del presupuesto {presupuestoObra.numero || ''}
+        </button>
+      )}
       <Field label="Dirección"><input value={f.direccion} onChange={(e) => set('direccion', e.target.value)} /></Field>
       <div className="grid2">
         <Field label="Fecha de inicio"><input type="date" value={f.fechaInicio || ''} onChange={(e) => set('fechaInicio', e.target.value)} /></Field>
         <Field label="Fecha de fin"><input type="date" value={f.fechaFin || ''} onChange={(e) => set('fechaFin', e.target.value)} /></Field>
       </div>
+
+      <Field label="Facturación directa (obras que no llevan una factura de venta formal)">
+        <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 13 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <input type="checkbox" checked={!!f.facturada} onChange={(e) => set('facturada', e.target.checked)} />
+            Facturada
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <input type="checkbox" checked={!!f.cobrada} onChange={(e) => set('cobrada', e.target.checked)} />
+            Cobrada
+          </label>
+        </div>
+        <div className="grid2">
+          <Field label="Método de cobro">
+            <select value={f.metodoCobro || ''} onChange={(e) => set('metodoCobro', e.target.value)}>
+              <option value="">— Sin especificar —</option>
+              {METODOS_COBRO.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Importe (€)">
+            <input type="number" value={f.importeDirecto ?? ''} onChange={(e) => set('importeDirecto', e.target.value)} placeholder="0.00" />
+          </Field>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: -2 }}>
+          Si esta obra ya tiene facturas de venta propias, no hace falta rellenar esto — se suma aparte, para no duplicar el importe.
+        </div>
+      </Field>
+
       <Field label="Notas"><textarea value={f.notas} onChange={(e) => set('notas', e.target.value)} /></Field>
       <div className="modal-actions">
         <button className="btn ghost" onClick={onClose}>Cancelar</button>
