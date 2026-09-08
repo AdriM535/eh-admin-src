@@ -69,7 +69,7 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
           <thead>
             <tr>
               <th>Código</th><th>Cliente</th><th>Ciudad</th><th>Responsable</th><th>Estado</th>
-              <th>Presupuestado</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Indirecto</th><th>Margen real</th><th></th>
+              <th>Presupuestado</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Indirecto</th><th title="Sobre base imponible (sin IVA). 'Estimado' si la obra no está finalizada o falta desglose de IVA en alguna factura.">Margen (sin IVA)</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -92,7 +92,12 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                     <td className="num">{fmtMoney(o.stats.totalCobrado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalGastos)}</td>
                     <td className="num" title="Parte de los gastos de operación (papelería, impuestos, personal admin. y nóminas) que le corresponde a esta obra">{fmtMoney(o.stats.costeIndirecto)}</td>
-                    <td className={'num ' + (o.stats.margenReal >= 0 ? 'pos' : 'neg')} title={`Margen directo (sin indirecto): ${fmtMoney(o.stats.margen)}`}>{fmtMoney(o.stats.margenReal)}</td>
+                    <td
+                      className={'num ' + (o.stats.margenReal >= 0 ? 'pos' : 'neg')}
+                      title={`Margen sobre base imponible, sin IVA (directo, sin indirecto): ${fmtMoney(o.stats.margen)}.${o.stats.margenEstimado ? ' Estimado: puede haber costes sin registrar o bases imponibles aproximadas.' : ''}`}
+                    >
+                      {fmtMoney(o.stats.margenReal)}{o.stats.margenEstimado && <span style={{ marginLeft: 4, fontSize: 10.5, color: 'var(--ink-soft)', fontWeight: 400 }}>(estimado)</span>}
+                    </td>
                     <td>
                       <button className="btn ghost small" onClick={() => setExpanded(open ? null : o.id)}>{open ? 'Ocultar' : 'Detalle'}</button>{' '}
                       <button className="btn ghost small" onClick={() => setModal({ type: 'obra', initial: o })}>Editar</button>{' '}
@@ -128,18 +133,29 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                             </>
                           )}
 
+                          <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginBottom: 4 }}>
+                            Margen sobre base imponible (sin IVA) — el IVA cobrado/pagado no es beneficio ni coste real, es dinero de paso hacia Hacienda.
+                          </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontWeight: 600 }}>
-                            <span>Margen directo (facturado − gasto directo)</span>
+                            <span>Margen directo (facturado − gasto directo, sin IVA)</span>
                             <span>{fmtMoney(o.stats.margen)}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                            <span>− Gasto indirecto prorrateado (papelería, impuestos, personal admin. y nóminas)</span>
-                            <span>{fmtMoney(o.stats.costeIndirecto)}</span>
+                            <span>− Gasto indirecto prorrateado, sin IVA (papelería, impuestos, personal admin. y nóminas)</span>
+                            <span>{fmtMoney(o.stats.costeIndirectoBase)}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0 8px', fontWeight: 700, borderTop: '1px solid var(--line)' }}>
-                            <span>= Margen real</span>
+                            <span>= Margen{o.stats.margenEstimado ? ' (estimado)' : ''}</span>
                             <span>{fmtMoney(o.stats.margenReal)}</span>
                           </div>
+                          {o.stats.margenEstimado && (
+                            <div className="desc" style={{ marginTop: -4, marginBottom: 8 }}>
+                              Estimado: {o.estado !== 'finalizada' ? 'la obra sigue en curso, pueden faltar costes o facturas por registrar. ' : ''}
+                              {(o.stats.ventas.some((v) => v.baseImponible == null) || o.stats.compras.some((c) => !data.facturaCompraLineas.some((l) => l.facturaCompraId === c.id)))
+                                ? 'Alguna factura no tiene el IVA desglosado, se usó el total como aproximación.'
+                                : ''}
+                            </div>
+                          )}
 
                           <b>Facturas de venta ({o.stats.ventas.length})</b>
                           {o.stats.ventas.length === 0 && <div className="empty">Ninguna</div>}

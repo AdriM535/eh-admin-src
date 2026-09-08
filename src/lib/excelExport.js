@@ -112,11 +112,14 @@ export function exportToExcel(data, calc) {
       Estado: o.estado,
       'Fecha inicio': o.fechaInicio || '',
       'Fecha fin': o.fechaFin || '',
-      'Facturado (€)': s.totalFacturado,
+      'Facturado con IVA (€)': s.totalFacturado,
       'Cobrado (€)': s.totalCobrado,
       'Pendiente de cobro (€)': s.pendienteCobro,
-      'Gastos (€)': s.totalGastos,
-      'Margen (€)': s.margen,
+      'Gastos con IVA (€)': s.totalGastos,
+      'Gasto indirecto prorrateado, sin IVA (€)': s.costeIndirectoBase,
+      'Margen directo sin IVA (€)': s.margen,
+      'Margen sin IVA con indirecto (€)': s.margenReal,
+      'Margen estimado (obra en curso o sin desglose de IVA)': s.margenEstimado ? 'Sí' : 'No',
     };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(obraRows), 'Obras');

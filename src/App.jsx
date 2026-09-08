@@ -3,16 +3,19 @@ import { useAuth } from './hooks/useAuth.js';
 import { useData } from './hooks/useData.js';
 import { useDocuments } from './hooks/useDocuments.js';
 import { usePerfil } from './hooks/usePerfil.js';
+import { useDeviceMode } from './hooks/useDeviceMode.js';
 import { computeAll } from './lib/computations.js';
 import { exportToExcel } from './lib/excelExport.js';
 
 import Login from './components/Auth/Login.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import OperativoPanel from './components/OperativoPanel.jsx';
+import DeviceModeChooser from './components/DeviceModeChooser.jsx';
 import Usuarios from './components/tabs/Usuarios.jsx';
 import Respaldos from './components/tabs/Respaldos.jsx';
 
 import Dashboard from './components/tabs/Dashboard.jsx';
+import MobileHome from './components/tabs/MobileHome.jsx';
 import Obras from './components/tabs/Obras.jsx';
 import Clientes from './components/tabs/Clientes.jsx';
 import FacturasVenta from './components/tabs/FacturasVenta.jsx';
@@ -56,11 +59,20 @@ function Operacion({ user, onSignOut }) {
   const { perfil, loading: perfilLoading } = usePerfil(user.id);
   const [tab, setTab] = useState('dashboard');
   const [modal, setModal] = useState(null);
+  const { modo, elegirModo, cambiarModo } = useDeviceMode();
 
   if (loading || perfilLoading) return <div className="loading">Cargando obras y facturas…</div>;
 
   if (perfil.role === 'operativo') {
     return <OperativoPanel data={data} actions={actions} docs={docs} perfil={perfil} userEmail={user.email} onSignOut={onSignOut} />;
+  }
+
+  // Preferencia de computadora/móvil: es solo de presentación, no cambia
+  // permisos ni datos. Si todavía no se eligió en este dispositivo (o se
+  // eligió sin "recordar" y ya pasó a otra sesión), se pregunta antes de
+  // mostrar nada más.
+  if (!modo) {
+    return <DeviceModeChooser onElegir={elegirModo} />;
   }
 
   const calc = computeAll(data);
@@ -75,11 +87,11 @@ function Operacion({ user, onSignOut }) {
 
   return (
     <div className="app">
-      <Sidebar tab={tab} setTab={setTab} data={data} onExport={() => exportToExcel(data, calc)} userEmail={user.email} isAdmin={isAdmin} onSignOut={onSignOut} />
+      <Sidebar tab={tab} setTab={setTab} data={data} onExport={() => exportToExcel(data, calc)} userEmail={user.email} isAdmin={isAdmin} onSignOut={onSignOut} modo={modo} onCambiarModo={cambiarModo} />
 
       <main>
         {error && <div className="alertrow crit" style={{ marginBottom: 16 }}><span className="tag">ERROR</span>{error}</div>}
-        {tab === 'dashboard' && <Dashboard {...tabProps} />}
+        {tab === 'dashboard' && (modo === 'movil' ? <MobileHome {...tabProps} /> : <Dashboard {...tabProps} />)}
         {tab === 'obras' && <Obras {...tabProps} />}
         {tab === 'clientes' && <Clientes {...tabProps} />}
         {tab === 'ventas' && <FacturasVenta {...tabProps} />}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Modal from '../common/Modal.jsx';
 import Field from '../common/Field.jsx';
-import { todayISO, calcLineaCompra, fmtMoney } from '../../lib/utils.js';
+import { todayISO, calcLineaCompra, fmtMoney, lineasCompraValidas, totalLineasCompra } from '../../lib/utils.js';
 import { CATEGORIAS_GENERALES, METODOS_PAGO } from '../../lib/constants.js';
 
 const emptyLinea = () => ({ producto: '', cantidad: 1, precioUnitario: '', tasaIva: 21, precioUnitarioConIva: 0, importe: 0 });
@@ -34,7 +34,8 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
   };
   const addLinea = () => setLineas((prev) => [...prev, emptyLinea()]);
   const removeLinea = (idx) => setLineas((prev) => prev.filter((_, i) => i !== idx));
-  const total = lineas.reduce((s, l) => s + (Number(l.importe) || 0), 0);
+  const lineasValidas = lineasCompraValidas(lineas);
+  const total = totalLineasCompra(lineas);
 
   const autonomos = personal.filter((p) => p.tipo === 'autonomo');
 
@@ -57,14 +58,12 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
             {obras.map((o) => <option key={o.id} value={o.id}>{o.codigo ? `${o.codigo} — ${o.nombre}` : o.nombre}</option>)}
           </select>
         </Field>
-        {!f.obraId ? (
+        {!f.obraId && (
           <Field label="Categoría del insumo general">
             <select value={f.categoriaGeneral} onChange={(e) => set('categoriaGeneral', e.target.value)}>
               {CATEGORIAS_GENERALES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
           </Field>
-        ) : (
-          <Field label="Fecha"><input type="date" value={f.fecha || ''} onChange={(e) => set('fecha', e.target.value)} /></Field>
         )}
       </div>
       {(f.categoriaGeneral === 'autonomo' || autonomos.some((p) => p.id === f.personalId)) && (
@@ -76,25 +75,27 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
         </Field>
       )}
       <div className="grid3">
-        {f.obraId && <Field label="Fecha"><input type="date" value={f.fecha || ''} onChange={(e) => set('fecha', e.target.value)} /></Field>}
+        <Field label="Fecha"><input type="date" value={f.fecha || ''} onChange={(e) => set('fecha', e.target.value)} /></Field>
         <Field label="Comercio / proveedor"><input value={f.proveedor || ''} onChange={(e) => set('proveedor', e.target.value)} placeholder="Obramat, Leroy Merlin…" /></Field>
         <Field label="Nº de factura"><input value={f.numeroFactura || ''} onChange={(e) => set('numeroFactura', e.target.value)} /></Field>
       </div>
 
       <Field label="Productos de la factura">
-        <div className="lineitems">
-          <div className="lirow head"><div>Producto</div><div>Cant.</div><div>Precio ud.</div><div>Importe</div><div></div></div>
+        <div className="lineitems compra">
+          <div className="lirow head"><div>Producto</div><div>Cant.</div><div>Precio ud.</div><div>IVA %</div><div>Importe</div><div></div></div>
           {lineas.map((l, idx) => (
             <div className="lirow" key={idx}>
               <div className="lifield"><span className="mlabel">Producto</span><input value={l.producto} onChange={(e) => setLinea(idx, 'producto', e.target.value)} placeholder="Ej. Saco cemento 25kg" /></div>
               <div className="lifield"><span className="mlabel">Cant.</span><input type="number" value={l.cantidad} onChange={(e) => setLinea(idx, 'cantidad', e.target.value)} /></div>
               <div className="lifield"><span className="mlabel">Precio ud.</span><input type="number" value={l.precioUnitario} onChange={(e) => setLinea(idx, 'precioUnitario', e.target.value)} /></div>
+              <div className="lifield"><span className="mlabel">IVA %</span><input type="number" value={l.tasaIva} onChange={(e) => setLinea(idx, 'tasaIva', e.target.value)} /></div>
               <div className="lifield"><span className="mlabel">Importe</span><input value={(Number(l.importe) || 0).toFixed(2)} readOnly /></div>
               <button className="btn danger small" type="button" onClick={() => removeLinea(idx)}>✕</button>
             </div>
           ))}
         </div>
         <button className="btn ghost small" type="button" onClick={addLinea}>+ Añadir producto</button>
+        <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>El importe de cada línea ya incluye su IVA. Las líneas sin producto no se guardan.</div>
       </Field>
 
       <div style={{ textAlign: 'right', fontSize: 16, fontWeight: 700, margin: '10px 0' }}>Total: {fmtMoney(total)}</div>
@@ -135,12 +136,13 @@ export default function FacturaCompraForm({ initial, obras, personal, facturaCom
         <button className="btn ghost" onClick={onClose}>Cancelar</button>
         <button
           className="btn"
+          disabled={uploading}
           onClick={() => {
             if (!f.obraId && !f.categoriaGeneral) { alert('Selecciona una obra o una categoría de insumo general'); return; }
-            onSave({ ...f, categoriaGeneral: f.obraId ? null : f.categoriaGeneral, entregaEfectivoId: f.metodoPago === 'efectivo' ? f.entregaEfectivoId : null, lineas });
+            onSave({ ...f, categoriaGeneral: f.obraId ? null : f.categoriaGeneral, entregaEfectivoId: f.metodoPago === 'efectivo' ? f.entregaEfectivoId : null, lineas: lineasValidas });
           }}
         >
-          Guardar
+          {uploading ? 'Subiendo adjunto…' : 'Guardar'}
         </button>
       </div>
     </Modal>

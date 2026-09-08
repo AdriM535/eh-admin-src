@@ -1,3 +1,26 @@
+// ---------------------------------------------------------------------------
+// CRITERIO CONTABLE PARA EL MARGEN: ¿el IVA es recuperable?
+//
+// El IVA que se cobra en una venta y el que se paga en una compra no es
+// beneficio ni coste real de la obra — es dinero que pasa por la empresa de
+// camino a Hacienda (se liquida la diferencia). Por eso el margen de una
+// obra se calcula aquí sobre BASES IMPONIBLES (sin IVA), no sobre los
+// totales con IVA que ve el cliente en la factura ("Facturado"/"Gastos"
+// siguen mostrando el total con IVA tal cual, esto solo afecta al cálculo
+// del margen).
+//
+// Esto asume el caso más habitual para una empresa/autónomo en régimen
+// general: el IVA soportado en las compras se puede deducir. Si la empresa
+// estuviera en un régimen donde el IVA NO es recuperable (p.ej. recargo de
+// equivalencia, o actividades exentas), cambia esto a `false` — en ese caso
+// el IVA de las compras es un coste real y se usa el total con IVA como
+// aproximación (una configuración más fina por categoría de gasto sería el
+// siguiente paso si hiciera falta).
+//
+// CONFIRMA ESTE CRITERIO CON TU GESTORÍA antes de tomar decisiones de
+// negocio basadas en las cifras de margen de la aplicación.
+export const IVA_RECUPERABLE = true;
+
 export const ESTADOS_OBRA = [
   { id: 'presupuesto', label: 'En presupuesto' },
   { id: 'activa', label: 'Activa' },

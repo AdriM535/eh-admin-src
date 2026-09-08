@@ -18,7 +18,7 @@ const NAV_ITEMS = [
   { id: 'respaldos', label: 'Respaldos', icon: '💾', adminOnly: true },
 ];
 
-export default function Sidebar({ tab, setTab, data, onExport, userEmail, isAdmin, onSignOut }) {
+export default function Sidebar({ tab, setTab, data, onExport, userEmail, isAdmin, onSignOut, modo, onCambiarModo }) {
   const items = NAV_ITEMS.filter((it) => !it.adminOnly || isAdmin);
   const [navOpen, setNavOpen] = useState(false);
   const activo = NAV_ITEMS.find((it) => it.id === tab);
@@ -39,6 +39,15 @@ export default function Sidebar({ tab, setTab, data, onExport, userEmail, isAdmi
           </button>
         </div>
         <div className="sub">Gestión de obras y facturación</div>
+        {modo && onCambiarModo && (
+          <button
+            className="modeswitch"
+            onClick={() => onCambiarModo(modo === 'movil' ? 'computadora' : 'movil')}
+            title="Cambiar entre vista de computadora y de móvil"
+          >
+            {modo === 'movil' ? '📱 Móvil' : '💻 Computadora'} · cambiar
+          </button>
+        )}
       </div>
       <nav className={navOpen ? 'open' : ''}>
         {items.map((it) => (

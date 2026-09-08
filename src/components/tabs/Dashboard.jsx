@@ -81,14 +81,14 @@ export default function Dashboard({ data, calc, setTab }) {
         <div className="cell warn"><div className="lbl">Gastos en {MESES[mMonth - 1]}</div><div className="val">{fmtMoney(ms.gastos)}</div></div>
       </div>
       <div className="ledger" style={{ marginTop: -18 }}>
-        <div className="cell"><div className="lbl">Margen del mes</div><div className="val">{fmtMoney(ms.margen)}</div></div>
+        <div className="cell" title="Facturado menos gastos sobre base imponible (sin IVA): el IVA no es beneficio ni coste real, es dinero de paso hacia Hacienda."><div className="lbl">Margen del mes (sin IVA)</div><div className="val">{fmtMoney(ms.margen)}</div></div>
         <div className="cell" style={{ cursor: 'pointer' }} onClick={() => setTab && setTab('obras')}><div className="lbl">Obras nuevas este mes</div><div className="val">{ms.numObrasNuevas}</div></div>
       </div>
 
       <div className="section-title">Cobros y gastos de {MESES[mMonth - 1]} {mYear} por método</div>
       <div className="grid2">
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8, padding: '14px 16px' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-soft)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Cobros (ventas) — {ms.ventasMes.length} factura(s)</div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-soft)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Cobros (ventas) — {ms.ventasCobradasMes.length} de {ms.ventasMes.length} factura(s) cobradas</div>
           {Object.keys(ms.cobrosPorMetodo).length === 0 && <div className="empty">Sin cobros este mes.</div>}
           {Object.entries(ms.cobrosPorMetodo).map(([k, v]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0' }}><span>{k}</span><b>{fmtMoney(v)}</b></div>
@@ -121,8 +121,8 @@ export default function Dashboard({ data, calc, setTab }) {
           <div className="val">{fmtMoney(ys.gastos)}</div>
           <DeltaBadge curr={ys.gastos} prev={ysPrev.gastos} bueno={false} />
         </div>
-        <div className="cell">
-          <div className="lbl">Margen acumulado</div>
+        <div className="cell" title="Sobre base imponible (sin IVA)">
+          <div className="lbl">Margen acumulado (sin IVA)</div>
           <div className="val">{fmtMoney(ys.margen)}</div>
           <DeltaBadge curr={ys.margen} prev={ysPrev.margen} bueno={true} />
         </div>
@@ -149,7 +149,7 @@ export default function Dashboard({ data, calc, setTab }) {
         <div style={{ display: 'flex', gap: 14, fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 16, flexWrap: 'wrap' }}>
           <span><b style={{ color: 'var(--accent)' }}>■</b> Facturado {aYear}: {fmtMoney(ys.ingresos)}</span>
           <span><b style={{ color: 'var(--steel)' }}>■</b> Gastos {aYear}: {fmtMoney(ys.gastos)}</span>
-          <span>Margen: <b>{fmtMoney(ys.margen)}</b></span>
+          <span>Margen (sin IVA): <b>{fmtMoney(ys.margen)}</b></span>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140, overflowX: 'auto' }}>
           {ys.meses.map((m) => (
@@ -171,7 +171,7 @@ export default function Dashboard({ data, calc, setTab }) {
 
       <div className="tblwrap" style={{ marginBottom: 20 }}>
         <table>
-          <thead><tr><th>Mes</th><th>Facturado</th><th>Gastos</th><th>Margen</th></tr></thead>
+          <thead><tr><th>Mes</th><th>Facturado</th><th>Gastos</th><th title="Sobre base imponible, sin IVA">Margen (sin IVA)</th></tr></thead>
           <tbody>
             {ys.meses.map((m) => (
               <tr key={m.ym} style={{ cursor: 'pointer' }} onClick={() => { setMMonth(ys.meses.indexOf(m) + 1); setMYear(aYear); }}>
@@ -197,7 +197,7 @@ export default function Dashboard({ data, calc, setTab }) {
       ) : (
         <div className="tblwrap">
           <table>
-            <thead><tr><th>Código</th><th>Obra</th><th>Cliente</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th>Margen real</th></tr></thead>
+            <thead><tr><th>Código</th><th>Obra</th><th>Cliente</th><th>Facturado</th><th>Cobrado</th><th>Gastos</th><th title="Sobre base imponible, sin IVA">Margen (sin IVA)</th></tr></thead>
             <tbody>
               {obrasActivas.map((o) => {
                 const cli = calc.clienteById(o.clienteId);
@@ -209,7 +209,9 @@ export default function Dashboard({ data, calc, setTab }) {
                     <td className="num">{fmtMoney(o.stats.totalFacturado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalCobrado)}</td>
                     <td className="num">{fmtMoney(o.stats.totalGastos + o.stats.costeIndirecto)}</td>
-                    <td className={'num ' + (o.stats.margenReal >= 0 ? 'pos' : 'neg')} title={`Margen directo (sin indirecto): ${fmtMoney(o.stats.margen)}`}>{fmtMoney(o.stats.margenReal)}</td>
+                    <td className={'num ' + (o.stats.margenReal >= 0 ? 'pos' : 'neg')} title={`Margen directo, sin IVA (sin indirecto): ${fmtMoney(o.stats.margen)}.${o.stats.margenEstimado ? ' Estimado.' : ''}`}>
+                      {fmtMoney(o.stats.margenReal)}{o.stats.margenEstimado && <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--ink-soft)', fontWeight: 400 }}>(est.)</span>}
+                    </td>
                   </tr>
                 );
               })}

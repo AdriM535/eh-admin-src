@@ -26,8 +26,12 @@ function direccionCliente(c) {
 // depende de que esa ventana en blanco pueda cargar la imagen por su cuenta.
 async function logoComoDataUrl() {
   try {
-    const res = await fetch('/logo.png');
+    // no-store: evita que un 404 antiguo (de antes de subir el logo) quede
+    // cacheado por el navegador y se sirva en vez del archivo real.
+    const res = await fetch('/logo.png', { cache: 'no-store' });
+    if (!res.ok) return null;
     const blob = await res.blob();
+    if (!blob.type.startsWith('image/')) return null; // p.ej. un fallback de SPA que devolvió index.html
     return await new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
@@ -124,8 +128,24 @@ async function abrirImpresion(p, lineas, cliente, obra) {
     </body></html>
   `);
   win.document.close();
-  win.focus();
-  win.print();
+
+  // El data: URL ya está totalmente descargado, pero el navegador todavía
+  // necesita decodificar y pintar el <img> antes de que la instantánea de
+  // impresión lo incluya — si se llama a print() justo después de escribir
+  // el HTML, algunos navegadores generan el PDF con el logo en blanco.
+  // Se espera a que la imagen cargue (o falle) antes de imprimir, con un
+  // margen de seguridad por si el evento no llega.
+  const imprimir = () => { win.focus(); win.print(); };
+  const imgEl = logoDataUrl ? win.document.querySelector('.header img') : null;
+  if (imgEl && !imgEl.complete) {
+    let hecho = false;
+    const finalizar = () => { if (!hecho) { hecho = true; imprimir(); } };
+    imgEl.addEventListener('load', finalizar, { once: true });
+    imgEl.addEventListener('error', finalizar, { once: true });
+    setTimeout(finalizar, 2000);
+  } else {
+    imprimir();
+  }
 }
 
 export default function Presupuestos({ data, actions, calc, setModal }) {

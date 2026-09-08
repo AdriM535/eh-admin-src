@@ -1,4 +1,4 @@
-import { MES_CORTO, CATEGORIAS_INDIRECTAS } from './constants.js';
+import { MES_CORTO, CATEGORIAS_INDIRECTAS, IVA_RECUPERABLE } from './constants.js';
 
 // Todos los valores derivados de `data` que se reutilizan entre pestañas.
 // Se recalcula en cada render (el volumen de datos de esta app es pequeño).
@@ -11,6 +11,31 @@ export function computeAll(data) {
 
   const sum = (arr, f) => arr.reduce((s, x) => s + (Number(f(x)) || 0), 0);
 
+  // ---------------- bases imponibles (sin IVA), solo para el margen ----------------
+  // "Facturado"/"Cobrado"/"Gastos" siguen mostrando el total CON IVA tal
+  // cual aparece en la factura — eso no cambia. Pero el IVA no es beneficio
+  // ni coste real (es dinero de paso hacia Hacienda), así que el MARGEN se
+  // calcula aparte, sobre bases imponibles. Ver IVA_RECUPERABLE en
+  // constants.js para el criterio y cómo cambiarlo.
+  const baseVenta = (f) => (f.baseImponible != null && f.baseImponible !== '' ? Number(f.baseImponible) : Number(f.total) || 0);
+  const ventaBaseEsAproximada = (f) => f.baseImponible == null || f.baseImponible === '';
+
+  const lineasPorCompra = {};
+  data.facturaCompraLineas.forEach((l) => {
+    (lineasPorCompra[l.facturaCompraId] = lineasPorCompra[l.facturaCompraId] || []).push(l);
+  });
+  const baseCompra = (f) => {
+    const lns = lineasPorCompra[f.id];
+    if (!lns || lns.length === 0) return Number(f.total) || 0; // sin líneas: no hay forma de separar el IVA, se usa el total como aproximación
+    return sum(lns, (l) => Number(l.cantidad || 0) * Number(l.precioUnitario || 0));
+  };
+  const compraBaseEsAproximada = (f) => !lineasPorCompra[f.id] || lineasPorCompra[f.id].length === 0;
+
+  // Si el IVA no fuera recuperable (régimen distinto al general), el IVA de
+  // las compras es coste real -> se usa el total con IVA también para el margen.
+  const baseOTotalVenta = (f) => (IVA_RECUPERABLE ? baseVenta(f) : Number(f.total) || 0);
+  const baseOTotalCompra = (f) => (IVA_RECUPERABLE ? baseCompra(f) : Number(f.total) || 0);
+
   // ---------------- prorrateo de gastos indirectos entre obras ----------------
   // Las facturas de compra sin obra asignada y con una categoría "indirecta"
   // (papelería, impuestos, personal administrativo…), más el total de
@@ -19,59 +44,73 @@ export function computeAll(data) {
   // (facturaron o gastaron algo), en proporción a lo que facturó cada una —
   // así el margen de una obra no es solo su coste directo, sino lo que
   // realmente le corresponde del gasto general.
-  const gastosIndirectosPorMes = {}; // ym -> total del mes
-  const indirectoPorObraMes = {}; // `${obraId}|${ym}` -> importe asignado
-  const indirectoPorObraTotal = {}; // obraId -> importe acumulado (todos los meses)
-  let gastosIndirectosSinAsignar = 0; // meses con gasto indirecto pero ninguna obra con movimiento
+  //
+  // Se calcula dos veces con la misma lógica: una con cifras CON IVA (para
+  // la columna "Indirecto" que ya se mostraba, sin cambios de comportamiento)
+  // y otra sobre bases imponibles (solo para el margen corregido, ver más abajo).
+  function prorratearIndirectos(totalCompraIndirecta, totalVenta) {
+    const gastosIndirectosPorMes = {}; // ym -> total del mes
+    const indirectoPorObraMes = {}; // `${obraId}|${ym}` -> importe asignado
+    const indirectoPorObraTotal = {}; // obraId -> importe acumulado (todos los meses)
+    let gastosIndirectosSinAsignar = 0; // meses con gasto indirecto pero ninguna obra con movimiento
 
-  data.facturasCompra
-    .filter((f) => !f.obraId && CATEGORIAS_INDIRECTAS.includes(f.categoriaGeneral))
-    .forEach((f) => {
-      const ym = (f.fecha || '').slice(0, 7);
+    data.facturasCompra
+      .filter((f) => !f.obraId && CATEGORIAS_INDIRECTAS.includes(f.categoriaGeneral))
+      .forEach((f) => {
+        const ym = (f.fecha || '').slice(0, 7);
+        if (!ym) return;
+        gastosIndirectosPorMes[ym] = (gastosIndirectosPorMes[ym] || 0) + totalCompraIndirecta(f);
+      });
+
+    data.nominas.forEach((n) => {
+      const ym = (n.fechaPago || n.periodoFin || '').slice(0, 7);
       if (!ym) return;
-      gastosIndirectosPorMes[ym] = (gastosIndirectosPorMes[ym] || 0) + Number(f.total || 0);
+      gastosIndirectosPorMes[ym] = (gastosIndirectosPorMes[ym] || 0) + Number(n.total || 0);
     });
 
-  data.nominas.forEach((n) => {
-    const ym = (n.fechaPago || n.periodoFin || '').slice(0, 7);
-    if (!ym) return;
-    gastosIndirectosPorMes[ym] = (gastosIndirectosPorMes[ym] || 0) + Number(n.total || 0);
-  });
+    Object.entries(gastosIndirectosPorMes).forEach(([ym, totalIndirecto]) => {
+      const facturadoPorObra = {};
+      data.facturasVenta
+        .filter((f) => f.obraId && (f.fechaExpedicion || '').slice(0, 7) === ym)
+        .forEach((f) => { facturadoPorObra[f.obraId] = (facturadoPorObra[f.obraId] || 0) + totalVenta(f); });
 
-  Object.entries(gastosIndirectosPorMes).forEach(([ym, totalIndirecto]) => {
-    const facturadoPorObra = {};
-    data.facturasVenta
-      .filter((f) => f.obraId && (f.fechaExpedicion || '').slice(0, 7) === ym)
-      .forEach((f) => { facturadoPorObra[f.obraId] = (facturadoPorObra[f.obraId] || 0) + Number(f.total || 0); });
+      const obrasConMovimiento = new Set(Object.keys(facturadoPorObra));
+      data.facturasCompra
+        .filter((f) => f.obraId && (f.fecha || '').slice(0, 7) === ym)
+        .forEach((f) => obrasConMovimiento.add(f.obraId));
 
-    const obrasConMovimiento = new Set(Object.keys(facturadoPorObra));
-    data.facturasCompra
-      .filter((f) => f.obraId && (f.fecha || '').slice(0, 7) === ym)
-      .forEach((f) => obrasConMovimiento.add(f.obraId));
+      const totalFacturadoMes = Object.values(facturadoPorObra).reduce((s, v) => s + v, 0);
 
-    const totalFacturadoMes = Object.values(facturadoPorObra).reduce((s, v) => s + v, 0);
+      if (totalFacturadoMes > 0) {
+        obrasConMovimiento.forEach((obraId) => {
+          const importe = totalIndirecto * ((facturadoPorObra[obraId] || 0) / totalFacturadoMes);
+          indirectoPorObraMes[`${obraId}|${ym}`] = importe;
+          indirectoPorObraTotal[obraId] = (indirectoPorObraTotal[obraId] || 0) + importe;
+        });
+      } else if (obrasConMovimiento.size > 0) {
+        // Nadie facturó ese mes pero hubo gasto directo en alguna obra: se
+        // reparte a partes iguales entre esas obras como respaldo.
+        const importe = totalIndirecto / obrasConMovimiento.size;
+        obrasConMovimiento.forEach((obraId) => {
+          indirectoPorObraMes[`${obraId}|${ym}`] = importe;
+          indirectoPorObraTotal[obraId] = (indirectoPorObraTotal[obraId] || 0) + importe;
+        });
+      } else {
+        // Ninguna obra tuvo movimiento ese mes: no hay a quién asignárselo.
+        gastosIndirectosSinAsignar += totalIndirecto;
+      }
+    });
 
-    if (totalFacturadoMes > 0) {
-      obrasConMovimiento.forEach((obraId) => {
-        const importe = totalIndirecto * ((facturadoPorObra[obraId] || 0) / totalFacturadoMes);
-        indirectoPorObraMes[`${obraId}|${ym}`] = importe;
-        indirectoPorObraTotal[obraId] = (indirectoPorObraTotal[obraId] || 0) + importe;
-      });
-    } else if (obrasConMovimiento.size > 0) {
-      // Nadie facturó ese mes pero hubo gasto directo en alguna obra: se
-      // reparte a partes iguales entre esas obras como respaldo.
-      const importe = totalIndirecto / obrasConMovimiento.size;
-      obrasConMovimiento.forEach((obraId) => {
-        indirectoPorObraMes[`${obraId}|${ym}`] = importe;
-        indirectoPorObraTotal[obraId] = (indirectoPorObraTotal[obraId] || 0) + importe;
-      });
-    } else {
-      // Ninguna obra tuvo movimiento ese mes: no hay a quién asignárselo.
-      gastosIndirectosSinAsignar += totalIndirecto;
-    }
-  });
+    const gastosIndirectosTotal = sum(Object.values(gastosIndirectosPorMes), (v) => v);
+    return { gastosIndirectosPorMes, indirectoPorObraMes, indirectoPorObraTotal, gastosIndirectosSinAsignar, gastosIndirectosTotal };
+  }
 
-  const gastosIndirectosTotal = sum(Object.values(gastosIndirectosPorMes), (v) => v);
+  const indirectosConIva = prorratearIndirectos((f) => Number(f.total || 0), (f) => Number(f.total || 0));
+  const indirectosBase = prorratearIndirectos(baseOTotalCompra, baseOTotalVenta);
+  const {
+    gastosIndirectosPorMes, indirectoPorObraMes, indirectoPorObraTotal,
+    gastosIndirectosSinAsignar, gastosIndirectosTotal,
+  } = indirectosConIva;
 
   // ---------------- estadísticas por obra ----------------
   const obraStats = (obraId) => {
@@ -82,6 +121,7 @@ export function computeAll(data) {
     const presupuestosObra = data.presupuestos.filter((p) => p.obraId === obraId && p.estado === 'aceptado');
     const totalPresupuestado = sum(presupuestosObra, (p) => p.total);
 
+    // ---- cifras CON IVA: lo que aparece en la factura, columnas sin cambios ----
     const totalFacturado = sum(ventas, (f) => f.total);
     const totalCobradoFacturas = sum(ventas.filter((f) => f.cobrado), (f) => f.total);
     const totalAbonos = sum(abonosObra, (a) => a.importe);
@@ -96,14 +136,30 @@ export function computeAll(data) {
     const costeIndirecto = indirectoPorObraTotal[obraId] || 0;
     const totalGastosConIndirecto = totalGastos + costeIndirecto;
 
-    const margen = totalFacturado - totalGastos;
-    const margenReal = totalFacturado - totalGastosConIndirecto;
+    // ---- margen: sobre bases imponibles (sin IVA) — ver IVA_RECUPERABLE ----
+    const facturadoBase = sum(ventas, baseOTotalVenta);
+    const comprasBase = sum(compras, baseOTotalCompra);
+    const costeIndirectoBase = indirectosBase.indirectoPorObraTotal[obraId] || 0;
+    const gastosBase = comprasBase + costeIncidenciasEmpresa; // las incidencias no llevan IVA
+    const margen = facturadoBase - gastosBase;
+    const margenReal = margen - costeIndirectoBase;
+
+    // El margen es una ESTIMACIÓN (no un resultado definitivo) cuando:
+    // falta el desglose de base imponible en alguna venta/compra (se usó el
+    // total como aproximación), o la obra sigue en curso (pueden faltar
+    // costes todavía por registrar/facturar).
+    const obra = obraById(obraId);
+    const margenEstimado =
+      ventas.some(ventaBaseEsAproximada) ||
+      compras.some(compraBaseEsAproximada) ||
+      (obra ? obra.estado !== 'finalizada' : true);
 
     return {
       ventas, compras, abonosObra, incidenciasObra, presupuestosObra, totalPresupuestado,
       totalFacturado, totalCobrado, totalCobradoFacturas, totalAbonos, pendienteCobro,
-      totalCompras, costeIncidenciasEmpresa, costeIncidenciasEmpleado, totalGastos, margen,
-      costeIndirecto, totalGastosConIndirecto, margenReal,
+      totalCompras, costeIncidenciasEmpresa, costeIncidenciasEmpleado, totalGastos,
+      costeIndirecto, totalGastosConIndirecto,
+      facturadoBase, comprasBase, costeIndirectoBase, margen, margenReal, margenEstimado,
     };
   };
 
@@ -142,19 +198,34 @@ export function computeAll(data) {
     // confundirse con la facturación oficial — el total de ingresos es la
     // suma de ambos.
     const abonosMesEnB = data.abonos.filter((a) => a.enB && (a.fecha || '').slice(0, 7) === ym);
+    // "Facturado"/"Ingresos"/"Gastos" con IVA: lo que aparece en las
+    // facturas tal cual, sin cambios respecto a como se mostraba antes.
     const facturado = sum(ventasMes.filter((f) => !f.enB), (f) => f.total);
     const cobradoEnB = sum(ventasMes.filter((f) => f.enB), (f) => f.total) + sum(abonosMesEnB, (a) => a.importe);
     const ingresos = facturado + cobradoEnB;
     const gastosCompras = sum(comprasMes, (f) => f.total);
     const gastosNominas = sum(nominasMes, (n) => n.total);
     const gastos = gastosCompras + gastosNominas;
-    const margen = ingresos - gastos;
+
+    // Margen: sobre base imponible (sin IVA) — ver IVA_RECUPERABLE en
+    // constants.js. El dinero "en B" no pasa por IVA declarado, así que se
+    // cuenta tal cual (ya es neto), sin intentar quitarle una base imponible.
+    const facturadoBase = sum(ventasMes.filter((f) => !f.enB), baseOTotalVenta);
+    const ingresosBase = facturadoBase + cobradoEnB;
+    const gastosComprasBase = sum(comprasMes, baseOTotalCompra);
+    const gastosBase = gastosComprasBase + gastosNominas;
+    const margen = ingresosBase - gastosBase;
+
+    // "Cobros" (por método) es dinero que ya ha entrado de verdad — a
+    // diferencia de "facturado"/"ingresos" arriba (que son lo emitido ese
+    // mes, cobrado o no), aquí solo cuentan las ventas marcadas como cobradas.
+    const ventasCobradasMes = ventasMes.filter((f) => f.cobrado);
 
     return {
-      ym, ventasMes, comprasMes, nominasMes, obrasNuevasMes,
+      ym, ventasMes, comprasMes, nominasMes, obrasNuevasMes, ventasCobradasMes,
       facturado, cobradoEnB, ingresos, gastosCompras, gastosNominas, gastos, margen,
       numObrasNuevas: obrasNuevasMes.length,
-      cobrosPorMetodo: desgloseMetodo(ventasMes, 'metodoCobro'),
+      cobrosPorMetodo: desgloseMetodo(ventasCobradasMes, 'metodoCobro'),
       gastosPorMetodo: desgloseMetodo(comprasMes, 'metodoPago'),
       gastosIndirectos: gastosIndirectosPorMes[ym] || 0,
     };

@@ -1,7 +1,7 @@
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export const fmtMoney = (n) =>
-  (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €';
 
 export const fmtDate = (d) =>
   d ? new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -62,4 +62,16 @@ export function calcLineaCompra(cantidad, precioUnitario, tasaIva) {
   const precioUnitarioConIva = Math.round(precio * (1 + tasa / 100) * 100) / 100;
   const importe = Math.round(cant * precioUnitarioConIva * 100) / 100;
   return { precioUnitarioConIva, importe };
+}
+
+// Líneas sin producto no se pueden guardar (la columna es NOT NULL en la
+// base de datos), así que se descartan al guardar una factura de compra.
+// Esta función es la única fuente de verdad para el total mostrado en el
+// formulario, de modo que nunca cuente una línea que luego no se persiste.
+export function lineasCompraValidas(lineas) {
+  return (lineas || []).filter((l) => (l.producto || '').toString().trim());
+}
+
+export function totalLineasCompra(lineas) {
+  return lineasCompraValidas(lineas).reduce((s, l) => s + (Number(l.importe) || 0), 0);
 }

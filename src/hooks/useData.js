@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient.js';
-import { rowToCamel, objToSnake, sanitizeForDb } from '../lib/utils.js';
+import { rowToCamel, objToSnake, sanitizeForDb, lineasCompraValidas, totalLineasCompra } from '../lib/utils.js';
 
 const emptyData = () => ({
   clientes: [],
@@ -208,17 +208,21 @@ export function useData(userId) {
   };
 
   // ---------------- FACTURAS DE COMPRA (cabecera + líneas de producto) ----------------
-  // Igual que los presupuestos: se reemplazan todas las líneas en cada guardado.
+  // Cabecera + líneas se guardan en una sola llamada a una función de Postgres
+  // (guardar_factura_compra, ver migration_013) para que sea una operación
+  // atómica: si algo falla a mitad de camino, no queda cabecera guardada con
+  // líneas a medias.
   const saveFacturaCompra = async (f) => {
     const { lineas, ...cabecera } = f;
-    const total = (lineas || []).reduce((s, l) => s + Number(l.importe || 0), 0);
-    const saved = await saveRow('facturas_compra', 'facturasCompra', { ...cabecera, total });
+    const lineasValidas = lineasCompraValidas(lineas);
+    const total = totalLineasCompra(lineas);
 
-    if (cabecera.id) {
-      await supabase.from('factura_compra_lineas').delete().eq('factura_compra_id', saved.id);
-    }
-    const lineasPayload = (lineas || []).filter((l) => l.producto).map((l, idx) => ({
-      factura_compra_id: saved.id,
+    const headerPayload = sanitizeForDb(objToSnake({ ...cabecera, total }));
+    delete headerPayload.id;
+    delete headerPayload.created_at;
+    delete headerPayload.created_by;
+
+    const lineasPayload = lineasValidas.map((l, idx) => ({
       producto: l.producto,
       cantidad: Number(l.cantidad) || 1,
       precio_unitario: Number(l.precioUnitario) || 0,
@@ -227,10 +231,21 @@ export function useData(userId) {
       importe: Number(l.importe) || 0,
       orden: idx,
     }));
-    if (lineasPayload.length > 0) {
-      const { error: err } = await supabase.from('factura_compra_lineas').insert(lineasPayload);
-      if (err) throw err;
-    }
+
+    const { data: row, error: err } = await supabase.rpc('guardar_factura_compra', {
+      p_id: cabecera.id || null,
+      p_header: headerPayload,
+      p_lineas: lineasPayload,
+    });
+    if (err) throw err;
+    const saved = rowToCamel(row);
+
+    setData((prev) => ({
+      ...prev,
+      facturasCompra: cabecera.id
+        ? prev.facturasCompra.map((x) => (x.id === saved.id ? saved : x))
+        : [...prev.facturasCompra, saved],
+    }));
     await fetchTable('facturaCompraLineas');
     return saved;
   };
