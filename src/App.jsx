@@ -78,9 +78,17 @@ function Operacion({ user, onSignOut }) {
   const calc = computeAll(data);
   const isAdmin = perfil.role === 'admin';
 
+  // Si el guardado falla (permisos, red, validación en la base de datos...)
+  // hay que avisar y dejar el formulario abierto con lo escrito — antes el
+  // error se perdía en silencio y parecía que "no pasaba nada" al pulsar
+  // Guardar.
   const wrap = (fn) => async (...args) => {
-    await fn(...args);
-    setModal(null);
+    try {
+      await fn(...args);
+      setModal(null);
+    } catch (err) {
+      alert('No se pudo guardar: ' + (err.message || err));
+    }
   };
 
   const tabProps = { data, actions, calc, setModal, setTab, docs };

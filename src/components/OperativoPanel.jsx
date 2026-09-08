@@ -19,8 +19,12 @@ export default function OperativoPanel({ data, actions, docs, perfil, userEmail,
   const yo = perfil.personalId ? calc.personalById(perfil.personalId) : null;
 
   const wrap = (fn) => async (...args) => {
-    await fn(...args);
-    setModal(null);
+    try {
+      await fn(...args);
+      setModal(null);
+    } catch (err) {
+      alert('No se pudo guardar: ' + (err.message || err));
+    }
   };
 
   return (
