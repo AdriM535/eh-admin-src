@@ -65,6 +65,10 @@ create table if not exists personal (
   email text,
   activo boolean not null default true,
   notas text,
+  numero_afiliacion_ss text,
+  categoria text,                                 -- categoría profesional (ej. Técnico de mantenimiento)
+  grupo_cotizacion text,                          -- grupo de cotización a la Seguridad Social (1-11)
+  fecha_ingreso date,                             -- fecha de antigüedad
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
@@ -284,15 +288,21 @@ create table if not exists nominas (
   tipo text not null default 'periodica',        -- periodica | bono_extra (pago fuera de nómina normal)
   periodo_inicio date,
   periodo_fin date,
-  liquidado numeric not null default 0,
-  cotizacion_ss numeric not null default 0,
+  liquidado numeric not null default 0,           -- histórico: líquido introducido a mano antes del desglose en bruto
+  cotizacion_ss numeric not null default 0,       -- histórico
   adicionales numeric not null default 0,
   deducciones numeric not null default 0,
   horas_extra numeric not null default 0,
-  total numeric not null default 0,
+  total numeric not null default 0,               -- coste empresa (bruto + SS empresa) en nóminas nuevas
   pagado boolean not null default false,
   fecha_pago date,
   notas text,
+  salario_bruto numeric,
+  irpf_porcentaje numeric,
+  irpf_importe numeric,
+  ss_empleado numeric,
+  ss_empresa numeric,
+  liquido numeric,                                -- líquido a percibir, calculado: bruto - irpf - ss_empleado (+ ajustes)
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()
 );

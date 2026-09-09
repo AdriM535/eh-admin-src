@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmtMoney, calcIva, calcLineaCompra, lineasCompraValidas, totalLineasCompra } from './utils.js';
+import { fmtMoney, calcIva, calcLineaCompra, lineasCompraValidas, totalLineasCompra, calcNomina } from './utils.js';
 
 describe('fmtMoney', () => {
   it('formatea con separador de miles "." y decimales ","', () => {
@@ -56,5 +56,29 @@ describe('lineasCompraValidas / totalLineasCompra', () => {
   it('con todas las líneas válidas, el total es la suma completa', () => {
     const todasValidas = lineas.filter((l) => l.producto.trim());
     expect(totalLineasCompra(todasValidas)).toBeCloseTo(78.65 + 99, 2);
+  });
+});
+
+describe('calcNomina', () => {
+  it('calcula IRPF, líquido a percibir y coste empresa a partir del bruto', () => {
+    const { irpfImporte, liquido, costeEmpresa } = calcNomina({
+      salarioBruto: 2000, irpfPorcentaje: 15, ssEmpleado: 130, ssEmpresa: 640,
+    });
+    expect(irpfImporte).toBe(300); // 2000 * 15%
+    expect(liquido).toBe(1570); // 2000 - 300 - 130
+    expect(costeEmpresa).toBe(2640); // 2000 + 640 (el IRPF y el SS empleado no cambian lo que paga la empresa)
+  });
+
+  it('suma horas extra y adicionales, resta deducciones, en el líquido — no en el coste empresa', () => {
+    const { liquido, costeEmpresa } = calcNomina({
+      salarioBruto: 1500, irpfPorcentaje: 10, ssEmpleado: 100, ssEmpresa: 480,
+      horasExtra: 50, adicionales: 20, deducciones: 30,
+    });
+    expect(liquido).toBe(1500 - 150 - 100 + 50 + 20 - 30); // 1290
+    expect(costeEmpresa).toBe(1980); // 1500 + 480, sin horas extra/adicionales/deducciones
+  });
+
+  it('con campos vacíos (sin usar el modelo en bruto todavía) da todo en 0, no NaN', () => {
+    expect(calcNomina({})).toEqual({ irpfImporte: 0, liquido: 0, costeEmpresa: 0 });
   });
 });

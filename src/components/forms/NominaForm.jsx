@@ -1,21 +1,37 @@
 import { useState } from 'react';
 import Modal from '../common/Modal.jsx';
 import Field from '../common/Field.jsx';
-import { todayISO } from '../../lib/utils.js';
+import { todayISO, fmtMoney, calcNomina } from '../../lib/utils.js';
 import { TIPOS_NOMINA } from '../../lib/constants.js';
-
-const calcTotal = (f) =>
-  (Number(f.liquidado) || 0) + (Number(f.cotizacionSs) || 0) + (Number(f.adicionales) || 0) + (Number(f.horasExtra) || 0) - (Number(f.deducciones) || 0);
 
 export default function NominaForm({ initial, personal, onSave, onClose }) {
   const empleados = personal.filter((p) => p.tipo === 'empleado');
   const [f, setF] = useState(
     initial || {
-      personalId: empleados[0]?.id || '', tipo: 'periodica', periodoInicio: '', periodoFin: todayISO(), liquidado: '', cotizacionSs: '',
-      adicionales: '', deducciones: '', horasExtra: '', total: '', pagado: false, fechaPago: '', notas: '',
+      personalId: empleados[0]?.id || '', tipo: 'periodica', periodoInicio: '', periodoFin: todayISO(),
+      salarioBruto: '', irpfPorcentaje: '', ssEmpleado: '', ssEmpresa: '',
+      adicionales: '', deducciones: '', horasExtra: '',
+      irpfImporte: 0, liquido: 0, total: '',
+      pagado: false, fechaPago: '', notas: '',
     }
   );
-  const set = (k, v) => setF((prev) => ({ ...prev, [k]: v, total: k === 'total' ? v : calcTotal({ ...prev, [k]: v }) }));
+  const set = (k, v) => {
+    setF((prev) => {
+      const next = { ...prev, [k]: v };
+      if (next.tipo === 'bono_extra') {
+        return { ...next, total: next.adicionales };
+      }
+      // Solo recalcula el coste empresa si se está usando el modelo en
+      // bruto (el campo bruto tiene algo escrito). Si no, se respeta el
+      // total ya guardado — nóminas antiguas, introducidas directamente en
+      // líquido antes de este cambio, no se pisan con 0 al tocar otro campo.
+      if (next.salarioBruto !== '' && next.salarioBruto != null) {
+        const { irpfImporte, liquido, costeEmpresa } = calcNomina(next);
+        return { ...next, irpfImporte, liquido, total: costeEmpresa };
+      }
+      return next;
+    });
+  };
   const esBono = f.tipo === 'bono_extra';
 
   return (
@@ -46,14 +62,25 @@ export default function NominaForm({ initial, personal, onSave, onClose }) {
             <Field label="Periodo fin"><input type="date" value={f.periodoFin || ''} onChange={(e) => set('periodoFin', e.target.value)} /></Field>
           </div>
           <div className="grid3">
-            <Field label="Liquidado a percibir (€)"><input type="number" value={f.liquidado} onChange={(e) => set('liquidado', e.target.value)} /></Field>
-            <Field label="Cotización SS (€)"><input type="number" value={f.cotizacionSs} onChange={(e) => set('cotizacionSs', e.target.value)} /></Field>
-            <Field label="Horas extra (€)"><input type="number" value={f.horasExtra} onChange={(e) => set('horasExtra', e.target.value)} /></Field>
+            <Field label="Salario bruto (€)"><input type="number" value={f.salarioBruto} onChange={(e) => set('salarioBruto', e.target.value)} /></Field>
+            <Field label="% IRPF"><input type="number" value={f.irpfPorcentaje} onChange={(e) => set('irpfPorcentaje', e.target.value)} placeholder="Ej. 15" /></Field>
+            <Field label="IRPF (€)"><input value={fmtMoney(f.irpfImporte)} readOnly /></Field>
+          </div>
+          <div className="grid2">
+            <Field label="SS empleado (€)"><input type="number" value={f.ssEmpleado} onChange={(e) => set('ssEmpleado', e.target.value)} /></Field>
+            <Field label="SS empresa (€)"><input type="number" value={f.ssEmpresa} onChange={(e) => set('ssEmpresa', e.target.value)} /></Field>
           </div>
           <div className="grid3">
+            <Field label="Horas extra (€)"><input type="number" value={f.horasExtra} onChange={(e) => set('horasExtra', e.target.value)} /></Field>
             <Field label="Adicionales (€)"><input type="number" value={f.adicionales} onChange={(e) => set('adicionales', e.target.value)} /></Field>
             <Field label="Deducciones (€)"><input type="number" value={f.deducciones} onChange={(e) => set('deducciones', e.target.value)} /></Field>
-            <Field label="Total nómina (€)"><input type="number" value={f.total} onChange={(e) => set('total', e.target.value)} /></Field>
+          </div>
+          <div className="grid2">
+            <Field label="Líquido a percibir (€)"><input value={fmtMoney(f.liquido)} readOnly /></Field>
+            <Field label="Coste empresa (€)"><input value={fmtMoney(f.total)} readOnly /></Field>
+          </div>
+          <div className="desc" style={{ marginTop: -8, marginBottom: 14 }}>
+            Líquido = bruto − IRPF − SS empleado (+ horas extra + adicionales − deducciones). Coste empresa = bruto + SS empresa — es lo que se usa como gasto de esta nómina.
           </div>
         </>
       )}

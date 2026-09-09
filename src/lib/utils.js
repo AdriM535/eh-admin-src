@@ -88,3 +88,21 @@ export function direccionCliente(c) {
   }
   return c.direccion || '';
 }
+
+// Nómina periódica en bruto: salario bruto, % IRPF y cotizaciones a la
+// Seguridad Social (empleado y empresa) -> líquido a percibir (lo que se
+// lleva el trabajador) y coste empresa (bruto + SS empresa, lo que le
+// cuesta a la empresa esta nómina).
+export function calcNomina(f) {
+  const bruto = Number(f.salarioBruto) || 0;
+  const irpfPct = Number(f.irpfPorcentaje) || 0;
+  const irpfImporte = Math.round(bruto * (irpfPct / 100) * 100) / 100;
+  const ssEmpleado = Number(f.ssEmpleado) || 0;
+  const ssEmpresa = Number(f.ssEmpresa) || 0;
+  const horasExtra = Number(f.horasExtra) || 0;
+  const adicionales = Number(f.adicionales) || 0;
+  const deducciones = Number(f.deducciones) || 0;
+  const liquido = Math.round((bruto - irpfImporte - ssEmpleado + horasExtra + adicionales - deducciones) * 100) / 100;
+  const costeEmpresa = Math.round((bruto + ssEmpresa) * 100) / 100;
+  return { irpfImporte, liquido, costeEmpresa };
+}
