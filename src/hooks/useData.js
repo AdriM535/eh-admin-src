@@ -74,11 +74,18 @@ export function useData(userId) {
   }, [fetchTable]);
 
   // ---------------- generic CRUD helpers ----------------
+  // Varias listas (obrasConStats, entregasConStats...) le añaden un campo
+  // "stats" calculado a cada fila para mostrarlo en pantalla — ese campo no
+  // es una columna real, así que si una fila de esas listas se reutiliza
+  // como valor inicial de un formulario ("initial={o}") y se guarda tal
+  // cual, "stats" viaja en el payload y Supabase lo rechaza. Se descarta
+  // aquí, en el único sitio por el que pasan todos los guardados.
   const insertRow = async (table, key, obj) => {
     const payload = sanitizeForDb(objToSnake(obj));
     delete payload.id;
     delete payload.created_at;
     delete payload.created_by;
+    delete payload.stats;
     if (userId) payload.created_by = userId;
     const { data: row, error: err } = await supabase.from(table).insert(payload).select().single();
     if (err) throw err;
@@ -92,6 +99,7 @@ export function useData(userId) {
     delete payload.id;
     delete payload.created_at;
     delete payload.created_by;
+    delete payload.stats;
     const { data: row, error: err } = await supabase.from(table).update(payload).eq('id', id).select().single();
     if (err) throw err;
     const camel = rowToCamel(row);
@@ -168,7 +176,36 @@ export function useData(userId) {
     });
     return `${prefix}${String(max + 1).padStart(3, '0')}`;
   };
-  const saveObra = (o) => saveRow('obras', 'obras', o.id ? o : { ...o, codigo: nextObraCodigo(dataRef.current.obras) });
+  // "Facturación directa" (obras sin factura de venta formal): al guardar
+  // una obra marcada como "facturada" con un importe, se crea de verdad una
+  // factura de venta ligada a esa obra (sin número ni fecha todavía, para
+  // que aparezca en Facturas de venta lista para completar) en vez de
+  // llevar la cuenta aparte solo en la obra. Si ya existe (facturaDirectaId),
+  // se actualiza en vez de crear una segunda.
+  const saveObra = async (o) => {
+    const saved = await saveRow('obras', 'obras', o.id ? o : { ...o, codigo: nextObraCodigo(dataRef.current.obras) });
+
+    if (saved.facturada && Number(saved.importeDirecto) > 0) {
+      const datosFactura = {
+        obraId: saved.id,
+        clienteId: saved.clienteId || null,
+        total: Number(saved.importeDirecto) || 0,
+        cobrado: !!saved.cobrada,
+        metodoCobro: saved.metodoCobro || null,
+      };
+      if (saved.facturaDirectaId) {
+        await updateRow('facturas_venta', 'facturasVenta', saved.facturaDirectaId, datosFactura);
+      } else {
+        const nuevaFactura = await insertRow('facturas_venta', 'facturasVenta', {
+          ...datosFactura,
+          notas: 'Generada automáticamente al marcar la obra como facturada — completa el número, la fecha y lo que falte.',
+        });
+        await updateRow('obras', 'obras', saved.id, { facturaDirectaId: nuevaFactura.id });
+      }
+    }
+
+    return saved;
+  };
   const deleteObra = (id) => {
     if (!window.confirm('¿Eliminar esta obra? Las facturas, abonos e incidencias asociadas quedarán sin obra vinculada.')) return;
     return deleteRow('obras', 'obras', id);
@@ -281,7 +318,7 @@ export function useData(userId) {
     const { lineas, ...cabecera } = p;
     const base = (lineas || []).reduce((s, l) => s + Number(l.importe || 0), 0);
     const iva = cabecera.iva ?? 21;
-    const total = base + base * (Number(iva) / 100);
+    const total = Math.round((base + base * (Number(iva) / 100)) * 100) / 100;
 
     // Al aceptar un presupuesto, pasa directo a Obras: si ya tenía una obra
     // vinculada (todavía "en presupuesto") se activa; si no tenía ninguna,

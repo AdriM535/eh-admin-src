@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { fmtMoney, fmtDate } from '../../lib/utils.js';
 import { ESTADOS_OBRA, METODOS_COBRO } from '../../lib/constants.js';
 
-export default function Obras({ data, actions, calc, setModal, docs }) {
+export default function Obras({ data, actions, calc, setModal, docs, setTab }) {
   const [estadoFilter, setEstadoFilter] = useState('todas');
   const [ciudadFilter, setCiudadFilter] = useState('todas');
   const [expanded, setExpanded] = useState(null);
@@ -110,13 +110,19 @@ export default function Obras({ data, actions, calc, setModal, docs }) {
                         <div style={{ padding: '8px 4px', fontSize: 12.5 }}>
                           {o.stats.pendienteCobro > 0 && <div style={{ marginBottom: 8 }}><span className="pill brick">Pendiente de cobro: {fmtMoney(o.stats.pendienteCobro)}</span></div>}
 
-                          {(o.facturada || o.cobrada || o.importeDirecto) && (
-                            <div style={{ marginBottom: 8, fontSize: 12.5 }}>
-                              <b>Facturación directa (sin factura de venta):</b> {fmtMoney(o.importeDirecto)}
-                              {' — '}{o.facturada ? 'facturada' : 'sin facturar'}, {o.cobrada ? 'cobrada' : 'pendiente de cobro'}
-                              {o.metodoCobro && ` (${METODOS_COBRO.find((m) => m.id === o.metodoCobro)?.label || o.metodoCobro})`}
-                            </div>
-                          )}
+                          {o.facturaDirectaId && (() => {
+                            const facturaDirecta = data.facturasVenta.find((v) => v.id === o.facturaDirectaId);
+                            return (
+                              <div style={{ marginBottom: 8, fontSize: 12.5 }}>
+                                <b>Facturación directa:</b> {fmtMoney(o.importeDirecto)}
+                                {' — '}{o.cobrada ? 'cobrada' : 'pendiente de cobro'}
+                                {o.metodoCobro && ` (${METODOS_COBRO.find((m) => m.id === o.metodoCobro)?.label || o.metodoCobro})`}
+                                {facturaDirecta && !facturaDirecta.numero && <span className="pill ochre" style={{ marginLeft: 6 }}>Factura incompleta</span>}
+                                {' '}
+                                <button className="btn ghost small" onClick={() => setTab && setTab('ventas')}>Ver en Facturas de venta</button>
+                              </div>
+                            );
+                          })()}
 
                           {o.stats.presupuestosObra.length > 0 && (
                             <>

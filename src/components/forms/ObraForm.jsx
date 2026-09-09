@@ -10,7 +10,7 @@ export default function ObraForm({ initial, clientes, personal, presupuestos, on
   const presupuestoInicial = initial?.id ? (presupuestos || []).find((p) => p.obraId === initial.id && p.estado === 'aceptado') : null;
   const [f, setF] = useState(
     initial
-      ? { ...initial, importeDirecto: initial.importeDirecto ?? (presupuestoInicial ? presupuestoInicial.total : '') }
+      ? { ...initial, importeDirecto: initial.importeDirecto ?? (presupuestoInicial ? Math.round(presupuestoInicial.total * 100) / 100 : '') }
       : {
           nombre: '', clienteId: clientes[0]?.id || '', responsableId: '', direccion: '', ciudad: '',
           estado: 'presupuesto', fechaInicio: '', fechaFin: '', notas: '',
@@ -70,7 +70,7 @@ export default function ObraForm({ initial, clientes, personal, presupuestos, on
         <Field label="Fecha de fin"><input type="date" value={f.fechaFin || ''} onChange={(e) => set('fechaFin', e.target.value)} /></Field>
       </div>
 
-      <Field label="Facturación directa (obras que no llevan una factura de venta formal)">
+      <Field label="Facturación directa (obras sin factura de venta creada todavía)">
         <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 13 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <input type="checkbox" checked={!!f.facturada} onChange={(e) => set('facturada', e.target.checked)} />
@@ -93,8 +93,10 @@ export default function ObraForm({ initial, clientes, personal, presupuestos, on
           </Field>
         </div>
         <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: -2 }}>
-          Si esta obra ya tiene facturas de venta propias, no hace falta rellenar esto — se suma aparte, para no duplicar el importe.
-          Puedes guardar sin marcar "Cobrada" todavía: mientras esté facturada y sin cobrar, aparecerá como pendiente de cobro en Obras y en Panorama.
+          {f.facturaDirectaId
+            ? 'Ya existe una factura de venta ligada a esta obra (búscala en "Facturas de venta") — al guardar se actualiza con estos datos.'
+            : 'Si marcas "Facturada" y pones un importe, al guardar se creará automáticamente una factura de venta ligada a esta obra en "Facturas de venta", sin número ni fecha todavía — para que completes esos datos allí.'}
+          {' '}Puedes guardar sin marcar "Cobrada" todavía: quedará pendiente de cobro.
         </div>
       </Field>
 

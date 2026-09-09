@@ -104,6 +104,11 @@ create table if not exists facturas_venta (
 create index if not exists facturas_venta_obra_id_idx on facturas_venta(obra_id);
 create index if not exists facturas_venta_cliente_id_idx on facturas_venta(cliente_id);
 
+-- La factura de venta que se crea automáticamente al marcar una obra como
+-- "facturada" (facturación directa, sin factura formal previa) — permite
+-- actualizar esa misma factura en vez de crear una nueva en cada guardado.
+alter table obras add column if not exists factura_directa_id uuid references facturas_venta(id) on delete set null;
+
 -- ---------------------------------------------------------------------------
 -- FACTURAS DE COMPRA (gastos): cabecera de la factura. Se asigna a UNA obra,
 -- o si no es de una obra concreta, se clasifica como insumo general
