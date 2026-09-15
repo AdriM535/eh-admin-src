@@ -62,7 +62,8 @@ async function abrirImpresion(p, lineas, cliente, obra) {
       th{background:#F1F4F6;text-transform:uppercase;font-size:11px;color:#6B7280;}
       .totales{margin-top:14px;}
       .totales .fila{text-align:right;font-size:13px;color:#6B7280;padding:5px 0;border-bottom:1px solid #DDE1E6;}
-      .total{text-align:right;font-size:18px;font-weight:700;padding:8px 0;border-top:1px solid #DDE1E6;border-bottom:2px solid #32363B;}
+      .totales .fila.base{font-weight:700;color:#32363B;}
+      .total{text-align:right;font-size:18px;font-weight:400;padding:8px 0;border-top:1px solid #DDE1E6;border-bottom:2px solid #32363B;}
       .meta{margin:18px 0;font-size:13px;line-height:1.7;}
       .contacto{margin-top:10px;font-size:12px;color:#6B7280;}
       .notas{margin-top:24px;font-size:12.5px;color:#6B7280;white-space:pre-wrap;}
@@ -94,7 +95,7 @@ async function abrirImpresion(p, lineas, cliente, obra) {
         <tbody>${filas}</tbody>
       </table>
       <div class="totales">
-        <div class="fila">Base imponible: ${fmtMoney(base)}</div>
+        <div class="fila base">Base imponible: ${fmtMoney(base)}</div>
         <div class="fila">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</div>
         <div class="total">Total: ${fmtMoney(total)}</div>
       </div>
