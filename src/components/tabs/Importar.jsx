@@ -270,6 +270,14 @@ export default function Importar({ actions }) {
               <div className="cell"><div className="lbl">Actualizados (ya existían)</div><div className="val">{result.actualizados}</div></div>
             </div>
           )}
+          {result.omitidas != null && result.omitidas > 0 && (
+            <div className="ledger" style={{ gridTemplateColumns: '1fr', marginTop: -18 }}>
+              <div className="cell" title="Mismo número de factura, fecha y proveedor/cliente que una ya registrada — no se ha vuelto a crear">
+                <div className="lbl">Omitidas por estar ya registradas (posibles duplicados)</div>
+                <div className="val">{result.omitidas}</div>
+              </div>
+            </div>
+          )}
           {result.errors.length > 0 && (
             <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--ink-soft)', maxHeight: 200, overflowY: 'auto' }}>
               {result.errors.slice(0, 30).map((e, i) => <div key={i}>{e}</div>)}

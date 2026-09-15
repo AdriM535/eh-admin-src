@@ -463,15 +463,37 @@ export function useData(userId) {
     return created.id;
   };
 
+  // Normaliza texto para comparar sin distinguir mayúsculas/acentos/espacios
+  // sobrantes — mismo criterio que excelImport.js.
+  const normImport = (s) =>
+    String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+
   const importFacturasVenta = async (rows, onProgress) => {
     const clientesCache = dataRef.current.clientes.slice();
     const obrasCache = dataRef.current.obras.slice();
+    // Para no duplicar una factura ya registrada (a mano o en una
+    // importación anterior): mismo número + misma fecha de expedición ya
+    // cuenta como "ya está". Las que no tengan número (p.ej. tickets sin
+    // numerar) no se pueden comparar así y se importan siempre.
+    const existentes = new Set(
+      dataRef.current.facturasVenta
+        .filter((f) => (f.numero || '').toString().trim())
+        .map((f) => `${(f.numero || '').toString().trim().toLowerCase()}|${f.fechaExpedicion || ''}`)
+    );
     let ok = 0;
     let fail = 0;
+    let omitidas = 0;
     const errors = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       try {
+        const numero = (r.numero || '').toString().trim();
+        const claveExistente = numero ? `${numero.toLowerCase()}|${r.fechaExpedicion || ''}` : null;
+        if (claveExistente && existentes.has(claveExistente)) {
+          omitidas++;
+          if (onProgress) onProgress(i + 1, rows.length);
+          continue;
+        }
         const clienteId = await findOrCreateByName('clientes', 'clientes', clientesCache, r.clienteNombre, r.clienteNif ? { nif: r.clienteNif } : {});
         // fechaInicio = fecha de la factura: así "obras nuevas este mes" en
         // Panorama agrupa la obra en el mes real en que se hizo el trabajo,
@@ -487,6 +509,7 @@ export function useData(userId) {
           total: r.total || 0, cobrado: !!r.cobrado, metodoCobro: r.metodoCobro || 'cuenta',
           enB: !!r.enB, notas: r.notas || '',
         });
+        if (claveExistente) existentes.add(claveExistente);
         ok++;
       } catch (err) {
         fail++;
@@ -494,7 +517,7 @@ export function useData(userId) {
       }
       if (onProgress) onProgress(i + 1, rows.length);
     }
-    return { ok, fail, errors };
+    return { ok, fail, omitidas, errors };
   };
 
   // `groups` = facturas ya agrupadas por (fecha + nº factura + proveedor), cada una
@@ -502,12 +525,27 @@ export function useData(userId) {
   const importFacturasCompra = async (groups, onProgress) => {
     const obrasCache = dataRef.current.obras.slice();
     const personalCache = dataRef.current.personal.slice();
+    // Misma idea que en ventas: nº de factura + fecha + proveedor ya
+    // registrados en la app cuenta como "ya está", para no duplicarla.
+    const existentes = new Set(
+      dataRef.current.facturasCompra
+        .filter((f) => (f.numeroFactura || '').toString().trim())
+        .map((f) => `${(f.numeroFactura || '').toString().trim().toLowerCase()}|${f.fecha || ''}|${normImport(f.proveedor)}`)
+    );
     let ok = 0;
     let fail = 0;
+    let omitidas = 0;
     const errors = [];
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
       try {
+        const numeroFactura = (g.numeroFactura || '').toString().trim();
+        const claveExistente = numeroFactura ? `${numeroFactura.toLowerCase()}|${g.fecha || ''}|${normImport(g.proveedor)}` : null;
+        if (claveExistente && existentes.has(claveExistente)) {
+          omitidas++;
+          if (onProgress) onProgress(i + 1, groups.length);
+          continue;
+        }
         const obraId = await findOrCreateByName('obras', 'obras', obrasCache, g.obraNombre, {
           estado: 'activa', codigo: nextObraCodigo(obrasCache), ...(g.fecha ? { fechaInicio: g.fecha } : {}),
         });
@@ -536,6 +574,7 @@ export function useData(userId) {
           const { error: err } = await supabase.from('factura_compra_lineas').insert(lineasPayload);
           if (err) throw err;
         }
+        if (claveExistente) existentes.add(claveExistente);
         ok++;
       } catch (err) {
         fail++;
@@ -544,7 +583,7 @@ export function useData(userId) {
       if (onProgress) onProgress(i + 1, groups.length);
     }
     await fetchTable('facturaCompraLineas');
-    return { ok, fail, errors };
+    return { ok, fail, omitidas, errors };
   };
 
   const importNominas = async (rows, onProgress) => {
