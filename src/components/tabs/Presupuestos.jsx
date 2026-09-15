@@ -95,9 +95,9 @@ async function abrirImpresion(p, lineas, cliente, obra) {
         <tbody>${filas}</tbody>
       </table>
       <div class="totales">
-        <div class="fila base">Base imponible: ${fmtMoney(base)}</div>
+        <div class="fila base">Total: ${fmtMoney(base)}</div>
         <div class="fila">IVA (${ivaPct}%): ${fmtMoney(cuotaIva)}</div>
-        <div class="total">Total: ${fmtMoney(total)}</div>
+        <div class="total">Total con IVA: ${fmtMoney(total)}</div>
       </div>
       <div class="contacto">Para cualquier duda sobre este presupuesto: ${CONTACTO_EMPRESA_EMAIL} · ${CONTACTO_EMPRESA_TELEFONO}</div>
       ${p.notas ? `<div class="notas">${escapeHtml(p.notas)}</div>` : ''}
