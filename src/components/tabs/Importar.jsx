@@ -62,7 +62,11 @@ export default function Importar({ actions }) {
       const wb = await readWorkbook(f);
       setWorkbook(wb);
       setSheetName(wb.sheetNames[0]);
-      setSelectedRow(null);
+      // La cabecera casi siempre es la primera fila — se preselecciona para
+      // que baste con revisarla y confirmar, en vez de tener que ir a
+      // buscarla y hacer clic (fácil de pasar por alto si la tabla está
+      // desplazada hacia abajo).
+      setSelectedRow(0);
       setHeaderRowIndex(null);
     } catch (err) {
       setError('No se pudo leer el archivo: ' + (err.message || err));
@@ -112,6 +116,12 @@ export default function Importar({ actions }) {
   // con cabeceras repartidas en varias filas, como la de "Ingresos").
   const montoSinMapear = spec?.montoKey != null && (mapping[spec.montoKey] == null || mapping[spec.montoKey] < 0);
   const montoTodoCero = spec?.montoKey != null && mappedRows.length > 0 && mappedRows.every((r) => !r[spec.montoKey]);
+  // Si casi ninguna columna se pudo adivinar, es casi seguro que la fila
+  // elegida como cabecera no es la correcta (p.ej. se seleccionó una fila
+  // de datos en vez de la de títulos) — mejor avisar antes de importar que
+  // dejar que se cree un único registro mezclando todas las filas.
+  const camposMapeados = spec ? spec.fields.filter((f) => mapping[f.key] != null && mapping[f.key] >= 0).length : 0;
+  const pocasColumnasMapeadas = !!spec && spec.fields.length >= 4 && camposMapeados <= 1;
 
   const runImport = async () => {
     setBusy(true);
@@ -167,13 +177,13 @@ export default function Importar({ actions }) {
           {workbook.sheetNames.length > 1 && (
             <div className="field" style={{ maxWidth: 320 }}>
               <label>Hoja del Excel</label>
-              <select value={sheetName} onChange={(e) => { setSheetName(e.target.value); setSelectedRow(null); }}>
+              <select value={sheetName} onChange={(e) => { setSheetName(e.target.value); setSelectedRow(0); }}>
                 {workbook.sheetNames.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
           )}
           <div className="desc" style={{ margin: '10px 0' }}>
-            Haz clic en la fila que contiene los nombres de columna (Fecha, Cliente, Importe…). Las filas anteriores se ignoran.
+            Ya está marcada la fila 1 (la más habitual). Si los nombres de columna (Fecha, Cliente, Importe…) están en otra fila, haz clic en ella para cambiar la selección.
           </div>
           <div className="tblwrap" style={{ maxHeight: 340, overflowY: 'auto' }}>
             <table>
@@ -218,7 +228,13 @@ export default function Importar({ actions }) {
             </div>
           </div>
 
-          {(montoSinMapear || montoTodoCero) && (
+          {pocasColumnasMapeadas && (
+            <div className="alertrow crit" style={{ marginBottom: 16 }}>
+              <span className="tag">Revisa esto</span>
+              Casi ninguna columna se ha reconocido — es casi seguro que la fila elegida como cabecera no es la correcta (puede que fuera una fila de datos, no la de títulos). Vuelve a "← Elegir otra fila de cabecera" y elige la fila que tiene los nombres de columna (Fecha, Cliente, Importe…).
+            </div>
+          )}
+          {!pocasColumnasMapeadas && (montoSinMapear || montoTodoCero) && (
             <div className="alertrow crit" style={{ marginBottom: 16 }}>
               <span className="tag">Revisa esto</span>
               {montoSinMapear
@@ -245,7 +261,7 @@ export default function Importar({ actions }) {
           <div className="modal-actions" style={{ justifyContent: 'flex-start' }}>
             <button className="btn ghost" onClick={reset}>Cancelar</button>
             <button className="btn ghost" onClick={() => setHeaderRowIndex(null)}>← Elegir otra fila de cabecera</button>
-            <button className="btn" disabled={busy || importPayload.length === 0} onClick={runImport}>
+            <button className="btn" disabled={busy || importPayload.length === 0 || pocasColumnasMapeadas} onClick={runImport}>
               {busy
                 ? `Importando ${progress ? `${progress.done}/${progress.total}` : '…'}`
                 : tipo === 'compras'
