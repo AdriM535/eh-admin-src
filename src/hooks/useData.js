@@ -588,23 +588,51 @@ export function useData(userId) {
 
   const importNominas = async (rows, onProgress) => {
     const personalCache = dataRef.current.personal.slice();
+    // Evita duplicar si el mismo archivo (u otro con las mismas nóminas) se
+    // importa dos veces: misma persona + mismo periodo ya guardado.
+    const existentes = new Set(
+      dataRef.current.nominas.map((n) => `${n.personalId}|${n.periodoInicio || ''}|${n.periodoFin || ''}`)
+    );
     let ok = 0;
     let fail = 0;
+    let omitidas = 0;
     const errors = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       try {
         const personalId = await findOrCreateByName('personal', 'personal', personalCache, r.trabajador, { tipo: 'empleado' });
         if (!personalId) throw new Error('Falta el nombre del trabajador/a');
-        const total =
-          r.total ||
-          (Number(r.liquidado) || 0) + (Number(r.cotizacionSs) || 0) + (Number(r.adicionales) || 0) + (Number(r.horasExtra) || 0) - (Number(r.deducciones) || 0);
+
+        const clave = `${personalId}|${r.periodoInicio || ''}|${r.periodoFin || ''}`;
+        if (existentes.has(clave)) { omitidas++; continue; }
+
+        // Modelo en bruto (igual que calcNomina()): a partir de bruto, IRPF
+        // en €, líquido y coste empresa (total) se deduce el SS empleado y
+        // el SS empresa, para que quede coherente con lo que ya calcula el
+        // formulario de nómina.
+        const bruto = Number(r.salarioBruto) || 0;
+        const irpfImporte = Number(r.irpfImporte) || 0;
+        let ssEmpleado = 0;
+        let ssEmpresa = 0;
+        let liquido = Number(r.liquido) || 0;
+        let total = Number(r.total) || 0;
+        if (bruto > 0) {
+          if (r.total !== '' && r.total != null) ssEmpresa = Math.round((total - bruto) * 100) / 100;
+          if (r.liquido !== '' && r.liquido != null) ssEmpleado = Math.round((bruto - irpfImporte - liquido) * 100) / 100;
+          if (!total) total = Math.round((bruto + ssEmpresa) * 100) / 100;
+          if (!liquido) liquido = Math.round((bruto - irpfImporte - ssEmpleado) * 100) / 100;
+        } else if (!total) {
+          total = liquido || (Number(r.adicionales) || 0) + (Number(r.horasExtra) || 0) - (Number(r.deducciones) || 0);
+        }
+        const irpfPorcentaje = bruto > 0 ? Math.round((irpfImporte / bruto) * 10000) / 100 : 0;
+
         await insertRow('nominas', 'nominas', {
           personalId, periodoInicio: r.periodoInicio || null, periodoFin: r.periodoFin || null,
-          liquidado: r.liquidado || 0, cotizacionSs: r.cotizacionSs || 0, adicionales: r.adicionales || 0,
-          deducciones: r.deducciones || 0, horasExtra: r.horasExtra || 0, total,
+          salarioBruto: bruto || null, irpfPorcentaje, irpfImporte, ssEmpleado, ssEmpresa, liquido,
+          adicionales: r.adicionales || 0, deducciones: r.deducciones || 0, horasExtra: r.horasExtra || 0, total,
           pagado: !!r.pagado, fechaPago: r.fechaPago || null, notas: r.notas || '',
         });
+        existentes.add(clave);
         ok++;
       } catch (err) {
         fail++;
@@ -612,7 +640,7 @@ export function useData(userId) {
       }
       if (onProgress) onProgress(i + 1, rows.length);
     }
-    return { ok, fail, errors };
+    return { ok, fail, omitidas, errors };
   };
 
   const ESTADOS_OBRA_VALIDOS = new Set(['presupuesto', 'activa', 'finalizada', 'cancelada']);

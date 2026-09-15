@@ -138,17 +138,22 @@ export const IMPORT_SPECS = {
   },
   nominas: {
     label: 'Nóminas',
-    montoKey: 'liquidado',
+    montoKey: 'total',
+    // Modelo en bruto (igual que calcNomina() / NominaForm): a partir de
+    // salario bruto + IRPF + líquido + coste empresa se deduce el resto
+    // (SS empleado, SS empresa, % IRPF) — ver importNominas() en useData.js.
     fields: [
       { key: 'trabajador', label: 'Trabajador/a', candidates: ['trabajador/a', 'trabajador', 'nombre'] },
-      { key: 'periodoInicio', label: 'Periodo inicio', type: 'date', candidates: ['inicio'] },
-      { key: 'periodoFin', label: 'Periodo fin', type: 'date', candidates: ['fin'] },
-      { key: 'liquidado', label: 'Liquidado a percibir', type: 'number', candidates: ['liquidado a percibir', 'liquidado'] },
-      { key: 'cotizacionSs', label: 'Cotización SS', type: 'number', candidates: ['cotizacion seguridad social', 'cotizacion ss'] },
+      { key: 'periodoInicio', label: 'Periodo inicio', type: 'date', candidates: ['periodo inicio', 'inicio'] },
+      { key: 'periodoFin', label: 'Periodo fin', type: 'date', candidates: ['periodo fin', 'fin'] },
+      { key: 'salarioBruto', label: 'Salario bruto', type: 'number', candidates: ['total bruto', 'salario bruto', 'bruto'] },
+      { key: 'irpfImporte', label: 'IRPF (€)', type: 'number', candidates: ['irpf'] },
+      { key: 'liquido', label: 'Líquido a percibir', type: 'number', candidates: ['liquido', 'liquidado a percibir', 'liquidado'] },
+      { key: 'ssTotal', label: 'SS acreditada (total)', type: 'number', candidates: ['ss acred', 'cotizacion seguridad social', 'cotizacion ss'] },
       { key: 'adicionales', label: 'Adicionales', type: 'number', candidates: ['adicional (b)', 'adicionales'] },
       { key: 'deducciones', label: 'Deducciones', type: 'number', candidates: ['deduccion errores', 'deducciones'] },
       { key: 'horasExtra', label: 'Horas extra', type: 'number', candidates: ['horas extras', 'horas extra'] },
-      { key: 'total', label: 'Total', type: 'number', candidates: ['nomina total', 'total'] },
+      { key: 'total', label: 'Coste empresa / Total', type: 'number', candidates: ['coste empresa', 'nomina total', 'total'] },
       { key: 'pagado', label: 'Pagada', type: 'bool', candidates: ['pagado', 'pagada'] },
       { key: 'fechaPago', label: 'Fecha de pago', type: 'date', candidates: ['fecha de pago'] },
       { key: 'notas', label: 'Notas', candidates: ['notas'] },
